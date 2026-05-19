@@ -12,11 +12,23 @@ const (
 	StatusCancelled = "cancelled"
 )
 
+// Common event categories for discovery pages.
+const (
+	CategoryMusic       = "music"
+	CategoryTech        = "tech"
+	CategorySports      = "sports"
+	CategoryConference  = "conference"
+	CategoryWorkshop    = "workshop"
+	CategoryOther       = "other"
+)
+
 type Event struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	Title          string    `gorm:"size:255;not null" json:"title"`
 	Description    string    `gorm:"type:text" json:"description"`
 	Location       string    `gorm:"size:255;not null" json:"location"`
+	Category       string    `gorm:"size:50;not null;default:other;index" json:"category"`
+	PriceCents     int64     `gorm:"not null;default:0" json:"price_cents"`
 	StartTime      time.Time `gorm:"not null" json:"start_time"`
 	EndTime        time.Time `gorm:"not null" json:"end_time"`
 	Capacity       int32     `gorm:"not null" json:"capacity"`
@@ -36,6 +48,9 @@ func (e *Event) BeforeCreate(tx *gorm.DB) error {
 	}
 	if e.Status == "" {
 		e.Status = StatusPublished
+	}
+	if e.Category == "" {
+		e.Category = CategoryOther
 	}
 	return nil
 }

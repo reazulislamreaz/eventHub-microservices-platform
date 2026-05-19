@@ -10,6 +10,7 @@ service UserService {
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
   rpc ValidateCredentials(ValidateCredentialsRequest) returns (ValidateCredentialsResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc GetUserStats(GetUserStatsRequest) returns (GetUserStatsResponse);
 }
 
 message User {
@@ -62,4 +63,11 @@ message UpdateProfileRequest {
 
 message UpdateProfileResponse {
   User user = 1;
+}
+
+message GetUserStatsRequest {}
+
+message GetUserStatsResponse {
+  int32 total_users = 1;
+  int32 admin_users = 2;
 }

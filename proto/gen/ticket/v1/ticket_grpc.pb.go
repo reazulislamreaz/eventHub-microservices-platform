@@ -23,6 +23,10 @@ const (
 	TicketService_CancelTicket_FullMethodName     = "/ticket.v1.TicketService/CancelTicket"
 	TicketService_GetTicketsByUser_FullMethodName = "/ticket.v1.TicketService/GetTicketsByUser"
 	TicketService_GetTicket_FullMethodName        = "/ticket.v1.TicketService/GetTicket"
+	TicketService_GetTicketByCode_FullMethodName  = "/ticket.v1.TicketService/GetTicketByCode"
+	TicketService_CheckInTicket_FullMethodName    = "/ticket.v1.TicketService/CheckInTicket"
+	TicketService_JoinWaitlist_FullMethodName     = "/ticket.v1.TicketService/JoinWaitlist"
+	TicketService_GetTicketStats_FullMethodName   = "/ticket.v1.TicketService/GetTicketStats"
 )
 
 // TicketServiceClient is the client API for TicketService service.
@@ -33,6 +37,10 @@ type TicketServiceClient interface {
 	CancelTicket(ctx context.Context, in *CancelTicketRequest, opts ...grpc.CallOption) (*CancelTicketResponse, error)
 	GetTicketsByUser(ctx context.Context, in *GetTicketsByUserRequest, opts ...grpc.CallOption) (*GetTicketsByUserResponse, error)
 	GetTicket(ctx context.Context, in *GetTicketRequest, opts ...grpc.CallOption) (*GetTicketResponse, error)
+	GetTicketByCode(ctx context.Context, in *GetTicketByCodeRequest, opts ...grpc.CallOption) (*GetTicketByCodeResponse, error)
+	CheckInTicket(ctx context.Context, in *CheckInTicketRequest, opts ...grpc.CallOption) (*CheckInTicketResponse, error)
+	JoinWaitlist(ctx context.Context, in *JoinWaitlistRequest, opts ...grpc.CallOption) (*JoinWaitlistResponse, error)
+	GetTicketStats(ctx context.Context, in *GetTicketStatsRequest, opts ...grpc.CallOption) (*GetTicketStatsResponse, error)
 }
 
 type ticketServiceClient struct {
@@ -83,6 +91,46 @@ func (c *ticketServiceClient) GetTicket(ctx context.Context, in *GetTicketReques
 	return out, nil
 }
 
+func (c *ticketServiceClient) GetTicketByCode(ctx context.Context, in *GetTicketByCodeRequest, opts ...grpc.CallOption) (*GetTicketByCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTicketByCodeResponse)
+	err := c.cc.Invoke(ctx, TicketService_GetTicketByCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ticketServiceClient) CheckInTicket(ctx context.Context, in *CheckInTicketRequest, opts ...grpc.CallOption) (*CheckInTicketResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckInTicketResponse)
+	err := c.cc.Invoke(ctx, TicketService_CheckInTicket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ticketServiceClient) JoinWaitlist(ctx context.Context, in *JoinWaitlistRequest, opts ...grpc.CallOption) (*JoinWaitlistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinWaitlistResponse)
+	err := c.cc.Invoke(ctx, TicketService_JoinWaitlist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ticketServiceClient) GetTicketStats(ctx context.Context, in *GetTicketStatsRequest, opts ...grpc.CallOption) (*GetTicketStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTicketStatsResponse)
+	err := c.cc.Invoke(ctx, TicketService_GetTicketStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TicketServiceServer is the server API for TicketService service.
 // All implementations must embed UnimplementedTicketServiceServer
 // for forward compatibility.
@@ -91,6 +139,10 @@ type TicketServiceServer interface {
 	CancelTicket(context.Context, *CancelTicketRequest) (*CancelTicketResponse, error)
 	GetTicketsByUser(context.Context, *GetTicketsByUserRequest) (*GetTicketsByUserResponse, error)
 	GetTicket(context.Context, *GetTicketRequest) (*GetTicketResponse, error)
+	GetTicketByCode(context.Context, *GetTicketByCodeRequest) (*GetTicketByCodeResponse, error)
+	CheckInTicket(context.Context, *CheckInTicketRequest) (*CheckInTicketResponse, error)
+	JoinWaitlist(context.Context, *JoinWaitlistRequest) (*JoinWaitlistResponse, error)
+	GetTicketStats(context.Context, *GetTicketStatsRequest) (*GetTicketStatsResponse, error)
 	mustEmbedUnimplementedTicketServiceServer()
 }
 
@@ -112,6 +164,18 @@ func (UnimplementedTicketServiceServer) GetTicketsByUser(context.Context, *GetTi
 }
 func (UnimplementedTicketServiceServer) GetTicket(context.Context, *GetTicketRequest) (*GetTicketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTicket not implemented")
+}
+func (UnimplementedTicketServiceServer) GetTicketByCode(context.Context, *GetTicketByCodeRequest) (*GetTicketByCodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTicketByCode not implemented")
+}
+func (UnimplementedTicketServiceServer) CheckInTicket(context.Context, *CheckInTicketRequest) (*CheckInTicketResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckInTicket not implemented")
+}
+func (UnimplementedTicketServiceServer) JoinWaitlist(context.Context, *JoinWaitlistRequest) (*JoinWaitlistResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JoinWaitlist not implemented")
+}
+func (UnimplementedTicketServiceServer) GetTicketStats(context.Context, *GetTicketStatsRequest) (*GetTicketStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTicketStats not implemented")
 }
 func (UnimplementedTicketServiceServer) mustEmbedUnimplementedTicketServiceServer() {}
 func (UnimplementedTicketServiceServer) testEmbeddedByValue()                       {}
@@ -206,6 +270,78 @@ func _TicketService_GetTicket_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TicketService_GetTicketByCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTicketByCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TicketServiceServer).GetTicketByCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TicketService_GetTicketByCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TicketServiceServer).GetTicketByCode(ctx, req.(*GetTicketByCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TicketService_CheckInTicket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckInTicketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TicketServiceServer).CheckInTicket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TicketService_CheckInTicket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TicketServiceServer).CheckInTicket(ctx, req.(*CheckInTicketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TicketService_JoinWaitlist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinWaitlistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TicketServiceServer).JoinWaitlist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TicketService_JoinWaitlist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TicketServiceServer).JoinWaitlist(ctx, req.(*JoinWaitlistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TicketService_GetTicketStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTicketStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TicketServiceServer).GetTicketStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TicketService_GetTicketStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TicketServiceServer).GetTicketStats(ctx, req.(*GetTicketStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TicketService_ServiceDesc is the grpc.ServiceDesc for TicketService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +364,22 @@ var TicketService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTicket",
 			Handler:    _TicketService_GetTicket_Handler,
+		},
+		{
+			MethodName: "GetTicketByCode",
+			Handler:    _TicketService_GetTicketByCode_Handler,
+		},
+		{
+			MethodName: "CheckInTicket",
+			Handler:    _TicketService_CheckInTicket_Handler,
+		},
+		{
+			MethodName: "JoinWaitlist",
+			Handler:    _TicketService_JoinWaitlist_Handler,
+		},
+		{
+			MethodName: "GetTicketStats",
+			Handler:    _TicketService_GetTicketStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

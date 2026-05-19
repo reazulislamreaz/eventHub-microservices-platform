@@ -11,6 +11,7 @@ service EventService {
   rpc CancelEvent(CancelEventRequest) returns (CancelEventResponse);
   rpc ReserveSeat(ReserveSeatRequest) returns (ReserveSeatResponse);
   rpc ReleaseSeat(ReleaseSeatRequest) returns (ReleaseSeatResponse);
+  rpc GetEventStats(GetEventStatsRequest) returns (GetEventStatsResponse);
 }
 
 message Event {
@@ -25,6 +26,8 @@ message Event {
   string created_by = 9;
   string created_at = 10;
   string status = 11;
+  string category = 12;
+  int64 price_cents = 13;
 }
 
 message CreateEventRequest {
@@ -35,6 +38,8 @@ message CreateEventRequest {
   string end_time = 5;
   int32 capacity = 6;
   string created_by = 7;
+  string category = 8;
+  int64 price_cents = 9;
 }
 
 message CreateEventResponse {
@@ -47,6 +52,7 @@ message ListEventsRequest {
   string search = 3;
   string location = 4;
   string status = 5;
+  string category = 6;
 }
 
 message ListEventsResponse {
@@ -88,4 +94,14 @@ message ReleaseSeatRequest {
 message ReleaseSeatResponse {
   bool success = 1;
   int32 available_seats = 2;
+}
+
+message GetEventStatsRequest {}
+
+message GetEventStatsResponse {
+  int32 total_events = 1;
+  int32 published_events = 2;
+  int32 cancelled_events = 3;
+  int32 total_capacity = 4;
+  int32 seats_available = 5;
 }

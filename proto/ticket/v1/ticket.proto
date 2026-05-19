@@ -9,6 +9,10 @@ service TicketService {
   rpc CancelTicket(CancelTicketRequest) returns (CancelTicketResponse);
   rpc GetTicketsByUser(GetTicketsByUserRequest) returns (GetTicketsByUserResponse);
   rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
+  rpc GetTicketByCode(GetTicketByCodeRequest) returns (GetTicketByCodeResponse);
+  rpc CheckInTicket(CheckInTicketRequest) returns (CheckInTicketResponse);
+  rpc JoinWaitlist(JoinWaitlistRequest) returns (JoinWaitlistResponse);
+  rpc GetTicketStats(GetTicketStatsRequest) returns (GetTicketStatsResponse);
 }
 
 message Ticket {
@@ -18,6 +22,14 @@ message Ticket {
   string status = 4;
   string ticket_code = 5;
   string created_at = 6;
+  string checked_in_at = 7;
+}
+
+message WaitlistEntry {
+  string id = 1;
+  string user_id = 2;
+  string event_id = 3;
+  string created_at = 4;
 }
 
 message CreateTicketRequest {
@@ -52,4 +64,38 @@ message GetTicketRequest {
 
 message GetTicketResponse {
   Ticket ticket = 1;
+}
+
+message GetTicketByCodeRequest {
+  string ticket_code = 1;
+}
+
+message GetTicketByCodeResponse {
+  Ticket ticket = 1;
+}
+
+message CheckInTicketRequest {
+  string ticket_code = 1;
+}
+
+message CheckInTicketResponse {
+  Ticket ticket = 1;
+}
+
+message JoinWaitlistRequest {
+  string user_id = 1;
+  string event_id = 2;
+}
+
+message JoinWaitlistResponse {
+  WaitlistEntry entry = 1;
+}
+
+message GetTicketStatsRequest {}
+
+message GetTicketStatsResponse {
+  int32 total_tickets = 1;
+  int32 confirmed_tickets = 2;
+  int32 checked_in_tickets = 3;
+  int32 waitlist_entries = 4;
 }
