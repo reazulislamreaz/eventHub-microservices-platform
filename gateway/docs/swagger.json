@@ -1,14 +1,448 @@
 {
+    "schemes": [
+        "http",
+        "https"
+    ],
     "swagger": "2.0",
     "info": {
-        "description": "GraphQL gateway and REST utilities for EventHub microservices platform.",
+        "description": "EventHub microservices platform API gateway.\n**REST API** — documented below; use Swagger UI at `/swagger/index.html` or `/docs`.\n**GraphQL** — Playground at `/`, endpoint `POST /query`, schema at `/api/v1/graphql/schema`.\n\n## Authentication\nObtain a JWT via `POST /api/v1/auth/login` or `POST /api/v1/auth/register`, then pass `Authorization: Bearer \u003ctoken\u003e` for protected routes.\n\n## Default admin (Docker)\nEmail: admin@eventhub.io | Password: AdminPass123!",
         "title": "EventHub Gateway API",
-        "contact": {},
+        "termsOfService": "https://github.com/eventhub/platform",
+        "contact": {
+            "name": "EventHub API Support",
+            "email": "support@eventhub.io"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
         "version": "1.0"
     },
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Authenticates with email/password and returns a JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "description": "Creates a user account and returns a JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register a new user",
+                "parameters": [
+                    {
+                        "description": "Registration details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/docs": {
+            "get": {
+                "description": "Returns links to Swagger UI, GraphQL Playground, and schema endpoints",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documentation"
+                ],
+                "summary": "API documentation index",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.APIDocsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/events": {
+            "get": {
+                "description": "Returns all published events with seat availability",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "List events",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rest.Event"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new event (admin only). Requires Bearer JWT with admin role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Create event",
+                "parameters": [
+                    {
+                        "description": "Event details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.CreateEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Event"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/graphql/schema": {
+            "get": {
+                "description": "Returns the GraphQL schema definition language file used by the gateway",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "documentation"
+                ],
+                "summary": "GraphQL schema (SDL)",
+                "responses": {
+                    "200": {
+                        "description": "GraphQL SDL",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Books a ticket for the authenticated user. Reserves a seat on the event.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Book a ticket",
+                "parameters": [
+                    {
+                        "description": "Event to book",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.BookTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Ticket"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users": {
+            "get": {
+                "description": "Returns all registered users",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rest.User"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}": {
+            "get": {
+                "description": "Returns a single user profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.User"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/tickets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns tickets for a user. Users may only access their own tickets unless admin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Get user tickets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rest.Ticket"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns gateway health status",
@@ -51,6 +485,177 @@
         }
     },
     "definitions": {
+        "rest.APIDocsResponse": {
+            "description": "API documentation index",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "endpoints": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "graphql": {
+                    "$ref": "#/definitions/rest.GraphQLDocs"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "EventHub Gateway API"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1.0"
+                }
+            }
+        },
+        "rest.AuthResponse": {
+            "description": "Authentication success response",
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                },
+                "user": {
+                    "$ref": "#/definitions/rest.User"
+                }
+            }
+        },
+        "rest.BookTicketRequest": {
+            "description": "Ticket booking body",
+            "type": "object",
+            "required": [
+                "eventId"
+            ],
+            "properties": {
+                "eventId": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                }
+            }
+        },
+        "rest.CreateEventRequest": {
+            "description": "Event creation body",
+            "type": "object",
+            "required": [
+                "capacity",
+                "endTime",
+                "location",
+                "startTime",
+                "title"
+            ],
+            "properties": {
+                "capacity": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Annual Go community meetup"
+                },
+                "endTime": {
+                    "type": "string",
+                    "example": "2026-06-15T18:00:00Z"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Dhaka, Bangladesh"
+                },
+                "startTime": {
+                    "type": "string",
+                    "example": "2026-06-15T09:00:00Z"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Go Conference 2026"
+                }
+            }
+        },
+        "rest.ErrorResponse": {
+            "description": "API error payload",
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "error": {
+                    "type": "string",
+                    "example": "invalid request"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "email is required"
+                }
+            }
+        },
+        "rest.Event": {
+            "description": "Event with seat inventory",
+            "type": "object",
+            "properties": {
+                "availableSeats": {
+                    "type": "integer",
+                    "example": 95
+                },
+                "capacity": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "createdAt": {
+                    "type": "string",
+                    "example": "2026-05-19T12:00:00Z"
+                },
+                "createdBy": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Annual Go meetup"
+                },
+                "endTime": {
+                    "type": "string",
+                    "example": "2026-06-15T18:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Dhaka, Bangladesh"
+                },
+                "startTime": {
+                    "type": "string",
+                    "example": "2026-06-15T09:00:00Z"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Go Conference 2026"
+                }
+            }
+        },
+        "rest.GraphQLDocs": {
+            "description": "GraphQL API references",
+            "type": "object",
+            "properties": {
+                "endpoint": {
+                    "type": "string",
+                    "example": "/query"
+                },
+                "playground": {
+                    "type": "string",
+                    "example": "/"
+                },
+                "schema": {
+                    "type": "string",
+                    "example": "/api/v1/graphql/schema"
+                }
+            }
+        },
         "rest.HealthResponse": {
             "description": "Health check response",
             "type": "object",
@@ -68,14 +673,142 @@
                     "example": "2026-05-19T12:00:00Z"
                 }
             }
+        },
+        "rest.LoginRequest": {
+            "description": "Login credentials",
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@eventhub.io"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "AdminPass123!"
+                }
+            }
+        },
+        "rest.RegisterRequest": {
+            "description": "User registration body",
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "SecurePass123"
+                }
+            }
+        },
+        "rest.Ticket": {
+            "description": "Confirmed event ticket",
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "example": "2026-05-19T12:30:00Z"
+                },
+                "eventId": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440002"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "confirmed"
+                },
+                "ticketCode": {
+                    "type": "string",
+                    "example": "EH-a1b2c3d4e5f67890"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "rest.User": {
+            "description": "Registered user",
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "example": "2026-05-19T12:00:00Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "user",
+                        "admin"
+                    ],
+                    "example": "user"
+                }
+            }
         }
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Enter \"Bearer {token}\"",
+            "description": "JWT token. Format: Bearer {token}",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "User registration and login",
+            "name": "auth"
+        },
+        {
+            "description": "User profiles",
+            "name": "users"
+        },
+        {
+            "description": "Event management",
+            "name": "events"
+        },
+        {
+            "description": "Ticket booking",
+            "name": "tickets"
+        },
+        {
+            "description": "Health and readiness probes",
+            "name": "health"
+        },
+        {
+            "description": "API documentation endpoints",
+            "name": "documentation"
+        }
+    ]
 }

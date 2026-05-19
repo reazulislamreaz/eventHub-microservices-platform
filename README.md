@@ -256,18 +256,54 @@ query {
 }
 ```
 
-## REST / Swagger
+## API Documentation & Swagger
 
-| Endpoint        | Description        |
-|-----------------|--------------------|
-| `GET /health`   | Liveness check     |
-| `GET /ready`    | Readiness check    |
-| `GET /swagger/` | Swagger UI         |
+Full API reference: **[docs/API.md](docs/API.md)**
 
-Example:
+| Resource | URL |
+|----------|-----|
+| **Swagger UI** | http://localhost:8080/swagger/index.html |
+| Short link | http://localhost:8080/docs |
+| OpenAPI JSON | http://localhost:8080/swagger/doc.json |
+| API index | http://localhost:8080/api/v1/docs |
+| GraphQL schema | http://localhost:8080/api/v1/graphql/schema |
+
+### REST API (`/api/v1`)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/auth/register` | — | Register user |
+| POST | `/api/v1/auth/login` | — | Login, get JWT |
+| GET | `/api/v1/users` | — | List users |
+| GET | `/api/v1/users/{id}` | — | Get user |
+| GET | `/api/v1/events` | — | List events |
+| POST | `/api/v1/events` | Admin | Create event |
+| POST | `/api/v1/tickets` | User | Book ticket |
+| GET | `/api/v1/users/{id}/tickets` | User | List tickets |
+| GET | `/health` | — | Liveness |
+| GET | `/ready` | — | Readiness |
+
+Use **Swagger UI** to try endpoints interactively. For protected routes, click **Authorize** and enter `Bearer <your-jwt>`.
+
+### Example (REST)
 
 ```bash
+# Login
+curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@eventhub.io","password":"AdminPass123!"}' | jq .
+
+# List events
+curl -s http://localhost:8080/api/v1/events | jq .
+
+# Health
 curl http://localhost:8080/health
+```
+
+### Regenerate Swagger
+
+```bash
+make swagger
 ```
 
 ## gRPC Services
@@ -311,6 +347,7 @@ See [.env.example](.env.example) for all configuration options.
 | Command | Description |
 |---------|-------------|
 | `make proto` | Regenerate gRPC code from protos |
+| `make swagger` | Regenerate OpenAPI/Swagger docs |
 | `make build` | Build all service binaries to `bin/` |
 | `make docker-up` | Start stack with Docker Compose |
 | `make docker-down` | Stop stack and remove volumes |

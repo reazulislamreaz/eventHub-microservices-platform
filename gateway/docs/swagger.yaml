@@ -1,5 +1,129 @@
 basePath: /
 definitions:
+  rest.APIDocsResponse:
+    description: API documentation index
+    properties:
+      description:
+        type: string
+      endpoints:
+        additionalProperties:
+          type: string
+        type: object
+      graphql:
+        $ref: '#/definitions/rest.GraphQLDocs'
+      name:
+        example: EventHub Gateway API
+        type: string
+      version:
+        example: "1.0"
+        type: string
+    type: object
+  rest.AuthResponse:
+    description: Authentication success response
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      user:
+        $ref: '#/definitions/rest.User'
+    type: object
+  rest.BookTicketRequest:
+    description: Ticket booking body
+    properties:
+      eventId:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+    required:
+    - eventId
+    type: object
+  rest.CreateEventRequest:
+    description: Event creation body
+    properties:
+      capacity:
+        example: 100
+        type: integer
+      description:
+        example: Annual Go community meetup
+        type: string
+      endTime:
+        example: "2026-06-15T18:00:00Z"
+        type: string
+      location:
+        example: Dhaka, Bangladesh
+        type: string
+      startTime:
+        example: "2026-06-15T09:00:00Z"
+        type: string
+      title:
+        example: Go Conference 2026
+        type: string
+    required:
+    - capacity
+    - endTime
+    - location
+    - startTime
+    - title
+    type: object
+  rest.ErrorResponse:
+    description: API error payload
+    properties:
+      code:
+        example: 400
+        type: integer
+      error:
+        example: invalid request
+        type: string
+      message:
+        example: email is required
+        type: string
+    type: object
+  rest.Event:
+    description: Event with seat inventory
+    properties:
+      availableSeats:
+        example: 95
+        type: integer
+      capacity:
+        example: 100
+        type: integer
+      createdAt:
+        example: "2026-05-19T12:00:00Z"
+        type: string
+      createdBy:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      description:
+        example: Annual Go meetup
+        type: string
+      endTime:
+        example: "2026-06-15T18:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      location:
+        example: Dhaka, Bangladesh
+        type: string
+      startTime:
+        example: "2026-06-15T09:00:00Z"
+        type: string
+      title:
+        example: Go Conference 2026
+        type: string
+    type: object
+  rest.GraphQLDocs:
+    description: GraphQL API references
+    properties:
+      endpoint:
+        example: /query
+        type: string
+      playground:
+        example: /
+        type: string
+      schema:
+        example: /api/v1/graphql/schema
+        type: string
+    type: object
   rest.HealthResponse:
     description: Health check response
     properties:
@@ -13,13 +137,380 @@ definitions:
         example: "2026-05-19T12:00:00Z"
         type: string
     type: object
+  rest.LoginRequest:
+    description: Login credentials
+    properties:
+      email:
+        example: admin@eventhub.io
+        type: string
+      password:
+        example: AdminPass123!
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  rest.RegisterRequest:
+    description: User registration body
+    properties:
+      email:
+        example: alice@example.com
+        type: string
+      name:
+        example: Alice
+        type: string
+      password:
+        example: SecurePass123
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  rest.Ticket:
+    description: Confirmed event ticket
+    properties:
+      createdAt:
+        example: "2026-05-19T12:30:00Z"
+        type: string
+      eventId:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440002
+        type: string
+      status:
+        example: confirmed
+        type: string
+      ticketCode:
+        example: EH-a1b2c3d4e5f67890
+        type: string
+      userId:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  rest.User:
+    description: Registered user
+    properties:
+      createdAt:
+        example: "2026-05-19T12:00:00Z"
+        type: string
+      email:
+        example: alice@example.com
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        example: Alice
+        type: string
+      role:
+        enum:
+        - user
+        - admin
+        example: user
+        type: string
+    type: object
 host: localhost:8080
 info:
-  contact: {}
-  description: GraphQL gateway and REST utilities for EventHub microservices platform.
+  contact:
+    email: support@eventhub.io
+    name: EventHub API Support
+  description: |-
+    EventHub microservices platform API gateway.
+    **REST API** — documented below; use Swagger UI at `/swagger/index.html` or `/docs`.
+    **GraphQL** — Playground at `/`, endpoint `POST /query`, schema at `/api/v1/graphql/schema`.
+
+    ## Authentication
+    Obtain a JWT via `POST /api/v1/auth/login` or `POST /api/v1/auth/register`, then pass `Authorization: Bearer <token>` for protected routes.
+
+    ## Default admin (Docker)
+    Email: admin@eventhub.io | Password: AdminPass123!
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://github.com/eventhub/platform
   title: EventHub Gateway API
   version: "1.0"
 paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates with email/password and returns a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user account and returns a JWT token
+      parameters:
+      - description: Registration details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/rest.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /api/v1/docs:
+    get:
+      description: Returns links to Swagger UI, GraphQL Playground, and schema endpoints
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.APIDocsResponse'
+      summary: API documentation index
+      tags:
+      - documentation
+  /api/v1/events:
+    get:
+      description: Returns all published events with seat availability
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/rest.Event'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: List events
+      tags:
+      - events
+    post:
+      consumes:
+      - application/json
+      description: Creates a new event (admin only). Requires Bearer JWT with admin
+        role.
+      parameters:
+      - description: Event details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.CreateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/rest.Event'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create event
+      tags:
+      - events
+  /api/v1/graphql/schema:
+    get:
+      description: Returns the GraphQL schema definition language file used by the
+        gateway
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: GraphQL SDL
+          schema:
+            type: string
+      summary: GraphQL schema (SDL)
+      tags:
+      - documentation
+  /api/v1/tickets:
+    post:
+      consumes:
+      - application/json
+      description: Books a ticket for the authenticated user. Reserves a seat on the
+        event.
+      parameters:
+      - description: Event to book
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.BookTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/rest.Ticket'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Book a ticket
+      tags:
+      - tickets
+  /api/v1/users:
+    get:
+      description: Returns all registered users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/rest.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: List users
+      tags:
+      - users
+  /api/v1/users/{id}:
+    get:
+      description: Returns a single user profile
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: Get user by ID
+      tags:
+      - users
+  /api/v1/users/{id}/tickets:
+    get:
+      description: Returns tickets for a user. Users may only access their own tickets
+        unless admin.
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/rest.Ticket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user tickets
+      tags:
+      - tickets
   /health:
     get:
       description: Returns gateway health status
@@ -46,10 +537,26 @@ paths:
       summary: Readiness check
       tags:
       - health
+schemes:
+- http
+- https
 securityDefinitions:
   BearerAuth:
-    description: Enter "Bearer {token}"
+    description: 'JWT token. Format: Bearer {token}'
     in: header
     name: Authorization
     type: apiKey
 swagger: "2.0"
+tags:
+- description: User registration and login
+  name: auth
+- description: User profiles
+  name: users
+- description: Event management
+  name: events
+- description: Ticket booking
+  name: tickets
+- description: Health and readiness probes
+  name: health
+- description: API documentation endpoints
+  name: documentation

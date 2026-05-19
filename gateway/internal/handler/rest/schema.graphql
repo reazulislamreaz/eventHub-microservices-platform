@@ -1,0 +1,92 @@
+"""
+EventHub GraphQL API — single entry point for the microservices platform.
+
+Public: register, login, getEvents, getUsers
+Protected (@auth): bookTicket, getTicketsByUser
+Admin (@auth @hasRole(role: "admin")): createEvent
+"""
+directive @auth on FIELD_DEFINITION
+directive @hasRole(role: String!) on FIELD_DEFINITION
+
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  role: String!
+  createdAt: String!
+}
+
+type Event {
+  id: ID!
+  title: String!
+  description: String!
+  location: String!
+  startTime: String!
+  endTime: String!
+  capacity: Int!
+  availableSeats: Int!
+  createdBy: ID!
+  createdAt: String!
+}
+
+type Ticket {
+  id: ID!
+  userId: ID!
+  eventId: ID!
+  status: String!
+  ticketCode: String!
+  createdAt: String!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+input RegisterInput {
+  email: String!
+  name: String!
+  password: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CreateEventInput {
+  title: String!
+  description: String!
+  location: String!
+  startTime: String!
+  endTime: String!
+  capacity: Int!
+}
+
+type Query {
+  """List all registered users"""
+  getUsers: [User!]!
+
+  """Get a single user by ID"""
+  getUser(id: ID!): User
+
+  """List all published events"""
+  getEvents: [Event!]!
+
+  """Get tickets for a user (requires authentication)"""
+  getTicketsByUser(userId: ID!): [Ticket!]! @auth
+}
+
+type Mutation {
+  """Register a new user account"""
+  register(input: RegisterInput!): AuthPayload!
+
+  """Login and receive a JWT token"""
+  login(input: LoginInput!): AuthPayload!
+
+  """Create a new event (admin only)"""
+  createEvent(input: CreateEventInput!): Event! @auth @hasRole(role: "admin")
+
+  """Book a ticket for an event (authenticated users)"""
+  bookTicket(eventId: ID!): Ticket! @auth
+}

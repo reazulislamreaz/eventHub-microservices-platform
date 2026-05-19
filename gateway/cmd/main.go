@@ -26,13 +26,39 @@ import (
 
 // @title           EventHub Gateway API
 // @version         1.0
-// @description     GraphQL gateway and REST utilities for EventHub microservices platform.
+// @description     EventHub microservices platform API gateway.
+// @description     **REST API** — documented below; use Swagger UI at `/swagger/index.html` or `/docs`.
+// @description     **GraphQL** — Playground at `/`, endpoint `POST /query`, schema at `/api/v1/graphql/schema`.
+// @description
+// @description     ## Authentication
+// @description     Obtain a JWT via `POST /api/v1/auth/login` or `POST /api/v1/auth/register`, then pass `Authorization: Bearer <token>` for protected routes.
+// @description
+// @description     ## Default admin (Docker)
+// @description     Email: admin@eventhub.io | Password: AdminPass123!
+// @termsOfService  https://github.com/eventhub/platform
+// @contact.name    EventHub API Support
+// @contact.email   support@eventhub.io
+// @license.name    MIT
+// @license.url     https://opensource.org/licenses/MIT
 // @host            localhost:8080
 // @BasePath        /
+// @schemes         http https
+// @tag.name        auth
+// @tag.description User registration and login
+// @tag.name        users
+// @tag.description User profiles
+// @tag.name        events
+// @tag.description Event management
+// @tag.name        tickets
+// @tag.description Ticket booking
+// @tag.name        health
+// @tag.description Health and readiness probes
+// @tag.name        documentation
+// @tag.description API documentation endpoints
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Enter "Bearer {token}"
+// @description     JWT token. Format: Bearer {token}
 func main() {
 	_ = godotenv.Load()
 
@@ -62,6 +88,9 @@ func main() {
 	}))
 
 	router := mux.NewRouter()
+	restHandler := rest.NewHandler(clients, jwtManager)
+	rest.RegisterRoutes(router, restHandler)
+
 	router.Handle("/health", http.HandlerFunc(rest.Health)).Methods(http.MethodGet)
 	router.Handle("/ready", http.HandlerFunc(rest.Ready)).Methods(http.MethodGet)
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
@@ -85,6 +114,8 @@ func main() {
 			zap.String("http", cfg.HTTPPort),
 			zap.String("graphql", "/query"),
 			zap.String("playground", "/"),
+			zap.String("swagger", "/swagger/index.html"),
+			zap.String("api_docs", "/api/v1/docs"),
 		)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("http serve", zap.Error(err))

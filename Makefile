@@ -16,6 +16,10 @@ proto:
 generate: proto
 	cd gateway && go generate ./...
 
+swagger:
+	cd gateway && go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/main.go -o docs --parseDependency --parseInternal
+	@cp gateway/graphql/schema.graphql gateway/internal/handler/rest/schema.graphql
+
 build:
 	cd user-service && go build -o ../bin/user-service ./cmd
 	cd event-service && go build -o ../bin/event-service ./cmd
