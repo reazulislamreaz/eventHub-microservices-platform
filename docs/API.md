@@ -4,13 +4,15 @@ The gateway exposes two API surfaces: **REST** (OpenAPI/Swagger) and **GraphQL**
 
 | Resource | URL |
 |----------|-----|
-| Swagger UI | http://localhost:8080/swagger/index.html |
+| **Documentation site** | http://localhost:8080/api/docs |
+| Swagger UI (try REST) | http://localhost:8080/swagger/index.html |
 | Short link | http://localhost:8080/docs |
 | OpenAPI JSON | http://localhost:8080/swagger/doc.json |
-| API index | http://localhost:8080/api/v1/docs |
+| API JSON index | http://localhost:8080/api/v1/docs |
 | GraphQL Playground | http://localhost:8080/ |
 | GraphQL endpoint | `POST http://localhost:8080/query` |
 | GraphQL schema (SDL) | http://localhost:8080/api/v1/graphql/schema |
+| Postman collection | `docs/postman/EventHub.postman_collection.json` |
 
 ---
 

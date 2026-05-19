@@ -258,14 +258,16 @@ query {
 
 ## API Documentation & Swagger
 
-Full API reference: **[docs/API.md](docs/API.md)**
+Full API reference: **[docs/README.md](docs/README.md)**
 
 | Resource | URL |
 |----------|-----|
-| **Swagger UI** | http://localhost:8080/swagger/index.html |
+| **API documentation site** | http://localhost:8080/api/docs |
+| **Swagger UI** (try REST) | http://localhost:8080/swagger/index.html |
 | Short link | http://localhost:8080/docs |
 | OpenAPI JSON | http://localhost:8080/swagger/doc.json |
-| API index | http://localhost:8080/api/v1/docs |
+| Markdown guides | [docs/](docs/) |
+| Postman collection | [docs/postman/](docs/postman/) |
 | GraphQL schema | http://localhost:8080/api/v1/graphql/schema |
 
 ### REST API (`/api/v1`)

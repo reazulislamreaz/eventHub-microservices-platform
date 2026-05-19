@@ -114,8 +114,8 @@ func main() {
 			zap.String("http", cfg.HTTPPort),
 			zap.String("graphql", "/query"),
 			zap.String("playground", "/"),
+			zap.String("api_docs", "/api/docs"),
 			zap.String("swagger", "/swagger/index.html"),
-			zap.String("api_docs", "/api/v1/docs"),
 		)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("http serve", zap.Error(err))

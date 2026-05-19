@@ -1,13 +1,23 @@
 package rest
 
-import "github.com/gorilla/mux"
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
 
 // RegisterRoutes mounts documented REST API routes on the router.
 func RegisterRoutes(r *mux.Router, h *Handler) {
 	// Documentation
+	r.PathPrefix("/api/docs/").Handler(http.StripPrefix("/api/docs/", APIDocsPage()))
+	r.HandleFunc("/api/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/docs/", http.StatusMovedPermanently)
+	}).Methods("GET")
 	r.HandleFunc("/api/v1/docs", APIDocs).Methods("GET")
 	r.HandleFunc("/api/v1/graphql/schema", GraphQLSchema).Methods("GET")
-	r.HandleFunc("/docs", SwaggerRedirect).Methods("GET")
+	r.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/docs/", http.StatusFound)
+	}).Methods("GET")
 
 	// Auth (public)
 	r.HandleFunc("/api/v1/auth/register", h.Register).Methods("POST")

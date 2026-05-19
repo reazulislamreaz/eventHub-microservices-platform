@@ -21,15 +21,16 @@ func APIDocs(w http.ResponseWriter, _ *http.Request) {
 		Version:     "1.0",
 		Description: "Microservices gateway exposing REST (Swagger) and GraphQL APIs for event management, registration, and ticketing.",
 		Endpoints: map[string]string{
-			"swagger":    "/swagger/index.html",
-			"openapi":    "/swagger/doc.json",
-			"health":     "/health",
-			"readiness":  "/ready",
-			"register":   "POST /api/v1/auth/register",
-			"login":      "POST /api/v1/auth/login",
-			"users":      "GET /api/v1/users",
-			"events":     "GET /api/v1/events",
-			"bookTicket": "POST /api/v1/tickets",
+			"documentation": "/api/docs/",
+			"swagger":       "/swagger/index.html",
+			"openapi":         "/swagger/doc.json",
+			"health":          "/health",
+			"readiness":       "/ready",
+			"register":        "POST /api/v1/auth/register",
+			"login":           "POST /api/v1/auth/login",
+			"users":           "GET /api/v1/users",
+			"events":          "GET /api/v1/events",
+			"bookTicket":      "POST /api/v1/tickets",
 		},
 		GraphQL: GraphQLDocs{
 			Playground: "/",
@@ -51,7 +52,3 @@ func GraphQLSchema(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(graphQLSchema))
 }
 
-// SwaggerRedirect redirects /docs to Swagger UI.
-func SwaggerRedirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/swagger/index.html", http.StatusFound)
-}
