@@ -1,9 +1,5 @@
 """
-EventHub GraphQL API — single entry point for the microservices platform.
-
-Public: register, login, getEvents, getUsers
-Protected (@auth): bookTicket, getTicketsByUser
-Admin (@auth @hasRole(role: "admin")): createEvent
+EventHub GraphQL API — production event ticketing platform.
 """
 directive @auth on FIELD_DEFINITION
 directive @hasRole(role: String!) on FIELD_DEFINITION
@@ -25,8 +21,16 @@ type Event {
   endTime: String!
   capacity: Int!
   availableSeats: Int!
+  status: String!
   createdBy: ID!
   createdAt: String!
+}
+
+type EventPage {
+  events: [Event!]!
+  total: Int!
+  page: Int!
+  pageSize: Int!
 }
 
 type Ticket {
@@ -63,30 +67,24 @@ input CreateEventInput {
   capacity: Int!
 }
 
+input UpdateProfileInput {
+  name: String!
+}
+
 type Query {
-  """List all registered users"""
   getUsers: [User!]!
-
-  """Get a single user by ID"""
   getUser(id: ID!): User
-
-  """List all published events"""
-  getEvents: [Event!]!
-
-  """Get tickets for a user (requires authentication)"""
+  getEvent(id: ID!): Event
+  getEvents(page: Int, pageSize: Int, search: String, location: String, status: String): EventPage!
   getTicketsByUser(userId: ID!): [Ticket!]! @auth
 }
 
 type Mutation {
-  """Register a new user account"""
   register(input: RegisterInput!): AuthPayload!
-
-  """Login and receive a JWT token"""
   login(input: LoginInput!): AuthPayload!
-
-  """Create a new event (admin only)"""
+  updateProfile(input: UpdateProfileInput!): User! @auth
   createEvent(input: CreateEventInput!): Event! @auth @hasRole(role: "admin")
-
-  """Book a ticket for an event (authenticated users)"""
+  cancelEvent(id: ID!): Event! @auth @hasRole(role: "admin")
   bookTicket(eventId: ID!): Ticket! @auth
+  cancelTicket(ticketId: ID!): Ticket! @auth
 }

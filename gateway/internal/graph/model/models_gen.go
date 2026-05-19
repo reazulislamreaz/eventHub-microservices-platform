@@ -25,8 +25,16 @@ type Event struct {
 	EndTime        string `json:"endTime"`
 	Capacity       int    `json:"capacity"`
 	AvailableSeats int    `json:"availableSeats"`
+	Status         string `json:"status"`
 	CreatedBy      string `json:"createdBy"`
 	CreatedAt      string `json:"createdAt"`
+}
+
+type EventPage struct {
+	Events   []*Event `json:"events"`
+	Total    int      `json:"total"`
+	Page     int      `json:"page"`
+	PageSize int      `json:"pageSize"`
 }
 
 type LoginInput struct {
@@ -53,6 +61,10 @@ type Ticket struct {
 	Status     string `json:"status"`
 	TicketCode string `json:"ticketCode"`
 	CreatedAt  string `json:"createdAt"`
+}
+
+type UpdateProfileInput struct {
+	Name string `json:"name"`
 }
 
 type User struct {

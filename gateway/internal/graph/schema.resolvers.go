@@ -7,11 +7,11 @@ package graph
 import (
 	"context"
 
+	"github.com/eventhub/gateway/internal/graph/model"
+	"github.com/eventhub/gateway/pkg/auth"
 	eventv1 "github.com/eventhub/proto/gen/event/v1"
 	ticketv1 "github.com/eventhub/proto/gen/ticket/v1"
 	userv1 "github.com/eventhub/proto/gen/user/v1"
-	"github.com/eventhub/gateway/internal/graph/model"
-	"github.com/eventhub/gateway/pkg/auth"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -56,6 +56,22 @@ func (r *mutationResolver) Login(ctx context.Context, input model.LoginInput) (*
 	return &model.AuthPayload{Token: token, User: user}, nil
 }
 
+// UpdateProfile is the resolver for the updateProfile field.
+func (r *mutationResolver) UpdateProfile(ctx context.Context, input model.UpdateProfileInput) (*model.User, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, gqlerror.Errorf("authentication required")
+	}
+	resp, err := r.Clients.User.UpdateProfile(ctx, &userv1.UpdateProfileRequest{
+		Id:   claims.UserID,
+		Name: input.Name,
+	})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapUser(resp.GetUser()), nil
+}
+
 // CreateEvent is the resolver for the createEvent field.
 func (r *mutationResolver) CreateEvent(ctx context.Context, input model.CreateEventInput) (*model.Event, error) {
 	claims, ok := auth.ClaimsFromContext(ctx)
@@ -77,6 +93,15 @@ func (r *mutationResolver) CreateEvent(ctx context.Context, input model.CreateEv
 	return mapEvent(resp.GetEvent()), nil
 }
 
+// CancelEvent is the resolver for the cancelEvent field.
+func (r *mutationResolver) CancelEvent(ctx context.Context, id string) (*model.Event, error) {
+	resp, err := r.Clients.Event.CancelEvent(ctx, &eventv1.CancelEventRequest{Id: id})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapEvent(resp.GetEvent()), nil
+}
+
 // BookTicket is the resolver for the bookTicket field.
 func (r *mutationResolver) BookTicket(ctx context.Context, eventID string) (*model.Ticket, error) {
 	claims, ok := auth.ClaimsFromContext(ctx)
@@ -86,6 +111,22 @@ func (r *mutationResolver) BookTicket(ctx context.Context, eventID string) (*mod
 	resp, err := r.Clients.Ticket.CreateTicket(ctx, &ticketv1.CreateTicketRequest{
 		UserId:  claims.UserID,
 		EventId: eventID,
+	})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapTicket(resp.GetTicket()), nil
+}
+
+// CancelTicket is the resolver for the cancelTicket field.
+func (r *mutationResolver) CancelTicket(ctx context.Context, ticketID string) (*model.Ticket, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, gqlerror.Errorf("authentication required")
+	}
+	resp, err := r.Clients.Ticket.CancelTicket(ctx, &ticketv1.CancelTicketRequest{
+		Id:     ticketID,
+		UserId: claims.UserID,
 	})
 	if err != nil {
 		return nil, grpcError(err)
@@ -115,9 +156,25 @@ func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, er
 	return mapUser(resp.GetUser()), nil
 }
 
+// GetEvent is the resolver for the getEvent field.
+func (r *queryResolver) GetEvent(ctx context.Context, id string) (*model.Event, error) {
+	resp, err := r.Clients.Event.GetEvent(ctx, &eventv1.GetEventRequest{Id: id})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapEvent(resp.GetEvent()), nil
+}
+
 // GetEvents is the resolver for the getEvents field.
-func (r *queryResolver) GetEvents(ctx context.Context) ([]*model.Event, error) {
-	resp, err := r.Clients.Event.ListEvents(ctx, &eventv1.ListEventsRequest{})
+func (r *queryResolver) GetEvents(ctx context.Context, page *int, pageSize *int, search *string, location *string, status *string) (*model.EventPage, error) {
+	req := &eventv1.ListEventsRequest{
+		Page:     int32(derefInt(page, 1)),
+		PageSize: int32(derefInt(pageSize, 20)),
+		Search:   derefString(search),
+		Location: derefString(location),
+		Status:   derefString(status),
+	}
+	resp, err := r.Clients.Event.ListEvents(ctx, req)
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -125,7 +182,12 @@ func (r *queryResolver) GetEvents(ctx context.Context) ([]*model.Event, error) {
 	for _, e := range resp.GetEvents() {
 		events = append(events, mapEvent(e))
 	}
-	return events, nil
+	return &model.EventPage{
+		Events:   events,
+		Total:    int(resp.GetTotal()),
+		Page:     int(resp.GetPage()),
+		PageSize: int(resp.GetPageSize()),
+	}, nil
 }
 
 // GetTicketsByUser is the resolver for the getTicketsByUser field.
@@ -156,6 +218,20 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+func derefInt(p *int, def int) int {
+	if p == nil {
+		return def
+	}
+	return *p
+}
+
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
 
 func grpcError(err error) error {
 	if st, ok := status.FromError(err); ok {

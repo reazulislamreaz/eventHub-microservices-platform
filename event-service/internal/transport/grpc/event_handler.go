@@ -44,14 +44,25 @@ func (h *EventHandler) CreateEvent(ctx context.Context, req *eventv1.CreateEvent
 	return &eventv1.CreateEventResponse{Event: toProtoEvent(event)}, nil
 }
 
-func (h *EventHandler) ListEvents(ctx context.Context, _ *eventv1.ListEventsRequest) (*eventv1.ListEventsResponse, error) {
-	events, err := h.svc.ListEvents(ctx)
+func (h *EventHandler) ListEvents(ctx context.Context, req *eventv1.ListEventsRequest) (*eventv1.ListEventsResponse, error) {
+	out, err := h.svc.ListEvents(ctx, service.EventListInput{
+		Page:     req.GetPage(),
+		PageSize: req.GetPageSize(),
+		Search:   req.GetSearch(),
+		Location: req.GetLocation(),
+		Status:   req.GetStatus(),
+	})
 	if err != nil {
 		return nil, mapError(err)
 	}
-	resp := &eventv1.ListEventsResponse{Events: make([]*eventv1.Event, 0, len(events))}
-	for i := range events {
-		e := events[i]
+	resp := &eventv1.ListEventsResponse{
+		Total:    out.Total,
+		Page:     out.Page,
+		PageSize: out.PageSize,
+		Events:   make([]*eventv1.Event, 0, len(out.Events)),
+	}
+	for i := range out.Events {
+		e := out.Events[i]
 		resp.Events = append(resp.Events, toProtoEvent(&e))
 	}
 	return resp, nil
@@ -67,6 +78,18 @@ func (h *EventHandler) GetEvent(ctx context.Context, req *eventv1.GetEventReques
 		return nil, mapError(err)
 	}
 	return &eventv1.GetEventResponse{Event: toProtoEvent(event)}, nil
+}
+
+func (h *EventHandler) CancelEvent(ctx context.Context, req *eventv1.CancelEventRequest) (*eventv1.CancelEventResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid event id")
+	}
+	event, err := h.svc.CancelEvent(ctx, id)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &eventv1.CancelEventResponse{Event: toProtoEvent(event)}, nil
 }
 
 func (h *EventHandler) ReserveSeat(ctx context.Context, req *eventv1.ReserveSeatRequest) (*eventv1.ReserveSeatResponse, error) {
@@ -105,6 +128,7 @@ func toProtoEvent(e *model.Event) *eventv1.Event {
 		AvailableSeats: e.AvailableSeats,
 		CreatedBy:      e.CreatedBy.String(),
 		CreatedAt:      e.CreatedAt.UTC().Format(time.RFC3339),
+		Status:         e.Status,
 	}
 }
 
@@ -115,6 +139,8 @@ func mapError(err error) error {
 	case errors.Is(err, repository.ErrEventNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, repository.ErrNoSeatsAvailable):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, repository.ErrEventCancelled):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Error(codes.Internal, "internal error")

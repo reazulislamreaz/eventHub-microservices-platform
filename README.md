@@ -2,6 +2,8 @@
 
 Production-oriented event management backend built with Go microservices, gRPC, GraphQL, and PostgreSQL.
 
+**Portfolio highlights:** see [FEATURES.md](FEATURES.md) for recruiter-oriented feature list.
+
 ## Overview
 
 EventHub lets users browse events, register accounts, book tickets, and receive unique ticket codes. Admins create events with capacity management. Each bounded context runs as an independent service with its own database.
@@ -29,10 +31,28 @@ EventHub lets users browse events, register accounts, book tickets, and receive 
 
 | Service        | Responsibility                          | Port  |
 |----------------|-----------------------------------------|-------|
-| **Gateway**    | GraphQL API, JWT auth, Swagger REST     | 8080  |
+| **Gateway**    | GraphQL, REST, Swagger, metrics, rate limit | 8082 (Docker) |
 | **User**       | Registration, authentication, profiles  | 50051 |
 | **Event**      | Event CRUD, seat inventory              | 50052 |
 | **Ticket**     | Booking, ticket codes, user tickets     | 50053 |
+
+## Production features (new)
+
+| Category | Features |
+|----------|----------|
+| **Domain** | Event cancel, ticket cancel + seat release, profile update, event status lifecycle |
+| **API** | Paginated event search (`?search=&location=&page=`), `getEvent` by ID |
+| **Ops** | `GET /metrics` (Prometheus format), `X-Request-ID`, rate limiting, `/ready` checks deps |
+
+**GraphQL examples:**
+
+```graphql
+# Paginated search
+query { getEvents(page: 1, pageSize: 10, search: "Go") { total events { title availableSeats status } } }
+
+# Cancel ticket
+mutation { cancelTicket(ticketId: "uuid") { ticketCode status } }
+```
 
 ## Tech Stack
 
@@ -383,6 +403,20 @@ Fixed in Dockerfiles via `ENV GOWORK=off`. Pull latest changes and rebuild:
 docker compose build --no-cache
 docker compose up -d
 ```
+
+### Swagger shows CORS errors
+
+Swagger UI must call the **same host and port** you opened in the browser (e.g. `localhost:8082`, not `8080`).
+
+This project sets an **empty OpenAPI host** at runtime so "Try it out" uses your current URL. Rebuild the gateway after pulling:
+
+```bash
+docker compose up --build -d gateway
+```
+
+Open Swagger at **http://localhost:8082/swagger/index.html** (not port 8080 unless that is your mapped port).
+
+To force a host explicitly: `SWAGGER_HOST=localhost:8082` in `docker-compose.yml`.
 
 ### Port already in use
 

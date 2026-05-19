@@ -19,8 +19,11 @@ var (
 	ErrSeatNotAvailable   = errors.New("no seats available")
 )
 
+var ErrForbidden = errors.New("forbidden")
+
 type TicketService interface {
 	CreateTicket(ctx context.Context, userID, eventID uuid.UUID) (*model.Ticket, error)
+	CancelTicket(ctx context.Context, ticketID, userID uuid.UUID) (*model.Ticket, error)
 	GetTicketsByUser(ctx context.Context, userID uuid.UUID) ([]model.Ticket, error)
 	GetTicket(ctx context.Context, id uuid.UUID) (*model.Ticket, error)
 }
@@ -75,6 +78,18 @@ func (s *ticketService) CreateTicket(ctx context.Context, userID, eventID uuid.U
 		}
 		return nil, err
 	}
+	return ticket, nil
+}
+
+func (s *ticketService) CancelTicket(ctx context.Context, ticketID, userID uuid.UUID) (*model.Ticket, error) {
+	if ticketID == uuid.Nil || userID == uuid.Nil {
+		return nil, ErrInvalidInput
+	}
+	ticket, err := s.repo.Cancel(ctx, ticketID, userID)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = s.eventClient.ReleaseSeat(ctx, &eventv1.ReleaseSeatRequest{EventId: ticket.EventID.String()})
 	return ticket, nil
 }
 

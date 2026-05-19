@@ -133,6 +133,7 @@ services:
     restart: unless-stopped
     environment:
       HTTP_PORT: "8080"
+      SWAGGER_HOST: ""
       JWT_SECRET: eventhub-dev-secret-change-in-production
       USER_SERVICE_ADDR: user-service:50051
       EVENT_SERVICE_ADDR: event-service:50052
@@ -147,7 +148,8 @@ services:
       ticket-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health | grep -q ok"]
+      test:
+        ["CMD-SHELL", "wget -q -O- http://localhost:8080/health | grep -q ok"]
       interval: 10s
       timeout: 5s
       retries: 5

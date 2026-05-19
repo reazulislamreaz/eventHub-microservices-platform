@@ -6,6 +6,7 @@ option go_package = "github.com/eventhub/proto/gen/ticket/v1;ticketv1";
 
 service TicketService {
   rpc CreateTicket(CreateTicketRequest) returns (CreateTicketResponse);
+  rpc CancelTicket(CancelTicketRequest) returns (CancelTicketResponse);
   rpc GetTicketsByUser(GetTicketsByUserRequest) returns (GetTicketsByUserResponse);
   rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
 }
@@ -25,6 +26,15 @@ message CreateTicketRequest {
 }
 
 message CreateTicketResponse {
+  Ticket ticket = 1;
+}
+
+message CancelTicketRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+message CancelTicketResponse {
   Ticket ticket = 1;
 }
 

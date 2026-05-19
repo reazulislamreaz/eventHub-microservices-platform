@@ -22,6 +22,7 @@ const (
 	EventService_CreateEvent_FullMethodName = "/event.v1.EventService/CreateEvent"
 	EventService_ListEvents_FullMethodName  = "/event.v1.EventService/ListEvents"
 	EventService_GetEvent_FullMethodName    = "/event.v1.EventService/GetEvent"
+	EventService_CancelEvent_FullMethodName = "/event.v1.EventService/CancelEvent"
 	EventService_ReserveSeat_FullMethodName = "/event.v1.EventService/ReserveSeat"
 	EventService_ReleaseSeat_FullMethodName = "/event.v1.EventService/ReleaseSeat"
 )
@@ -33,6 +34,7 @@ type EventServiceClient interface {
 	CreateEvent(ctx context.Context, in *CreateEventRequest, opts ...grpc.CallOption) (*CreateEventResponse, error)
 	ListEvents(ctx context.Context, in *ListEventsRequest, opts ...grpc.CallOption) (*ListEventsResponse, error)
 	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetEventResponse, error)
+	CancelEvent(ctx context.Context, in *CancelEventRequest, opts ...grpc.CallOption) (*CancelEventResponse, error)
 	ReserveSeat(ctx context.Context, in *ReserveSeatRequest, opts ...grpc.CallOption) (*ReserveSeatResponse, error)
 	ReleaseSeat(ctx context.Context, in *ReleaseSeatRequest, opts ...grpc.CallOption) (*ReleaseSeatResponse, error)
 }
@@ -75,6 +77,16 @@ func (c *eventServiceClient) GetEvent(ctx context.Context, in *GetEventRequest, 
 	return out, nil
 }
 
+func (c *eventServiceClient) CancelEvent(ctx context.Context, in *CancelEventRequest, opts ...grpc.CallOption) (*CancelEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelEventResponse)
+	err := c.cc.Invoke(ctx, EventService_CancelEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *eventServiceClient) ReserveSeat(ctx context.Context, in *ReserveSeatRequest, opts ...grpc.CallOption) (*ReserveSeatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReserveSeatResponse)
@@ -102,6 +114,7 @@ type EventServiceServer interface {
 	CreateEvent(context.Context, *CreateEventRequest) (*CreateEventResponse, error)
 	ListEvents(context.Context, *ListEventsRequest) (*ListEventsResponse, error)
 	GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error)
+	CancelEvent(context.Context, *CancelEventRequest) (*CancelEventResponse, error)
 	ReserveSeat(context.Context, *ReserveSeatRequest) (*ReserveSeatResponse, error)
 	ReleaseSeat(context.Context, *ReleaseSeatRequest) (*ReleaseSeatResponse, error)
 	mustEmbedUnimplementedEventServiceServer()
@@ -122,6 +135,9 @@ func (UnimplementedEventServiceServer) ListEvents(context.Context, *ListEventsRe
 }
 func (UnimplementedEventServiceServer) GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
+}
+func (UnimplementedEventServiceServer) CancelEvent(context.Context, *CancelEventRequest) (*CancelEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelEvent not implemented")
 }
 func (UnimplementedEventServiceServer) ReserveSeat(context.Context, *ReserveSeatRequest) (*ReserveSeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReserveSeat not implemented")
@@ -204,6 +220,24 @@ func _EventService_GetEvent_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EventService_CancelEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EventServiceServer).CancelEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EventService_CancelEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EventServiceServer).CancelEvent(ctx, req.(*CancelEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EventService_ReserveSeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReserveSeatRequest)
 	if err := dec(in); err != nil {
@@ -258,6 +292,10 @@ var EventService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEvent",
 			Handler:    _EventService_GetEvent_Handler,
+		},
+		{
+			MethodName: "CancelEvent",
+			Handler:    _EventService_CancelEvent_Handler,
 		},
 		{
 			MethodName: "ReserveSeat",

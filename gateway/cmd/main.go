@@ -16,6 +16,7 @@ import (
 	"github.com/eventhub/gateway/internal/graph"
 	"github.com/eventhub/gateway/internal/handler/rest"
 	"github.com/eventhub/gateway/internal/middleware"
+	gwmiddleware "github.com/eventhub/gateway/pkg/middleware"
 	"github.com/eventhub/gateway/pkg/auth"
 	"github.com/eventhub/pkg/logger"
 	"github.com/gorilla/mux"
@@ -24,7 +25,6 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 
-	_ "github.com/eventhub/gateway/docs"
 )
 
 // @title           EventHub Gateway API
@@ -43,7 +43,6 @@ import (
 // @contact.email   support@eventhub.io
 // @license.name    MIT
 // @license.url     https://opensource.org/licenses/MIT
-// @host            localhost:8080
 // @BasePath        /
 // @schemes         http https
 // @tag.name        auth
@@ -72,6 +71,7 @@ func main() {
 	defer log.Sync()
 
 	cfg := config.Load()
+	configureSwaggerHost(cfg.SwaggerHost)
 
 	startupCtx, startupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer startupCancel()
@@ -108,6 +108,7 @@ func main() {
 	restHandler := rest.NewHandler(clients, jwtManager)
 	rest.RegisterRoutes(router, restHandler)
 
+	router.HandleFunc("/metrics", rest.Metrics).Methods(http.MethodGet)
 	router.Handle("/health", http.HandlerFunc(rest.Health)).Methods(http.MethodGet)
 	router.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		rest.ReadyWithDeps(w, r, map[string]string{
@@ -116,16 +117,35 @@ func main() {
 			"ticket": cfg.TicketServiceAddr,
 		}, log)
 	}).Methods(http.MethodGet)
-	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 	router.Handle("/", playground.Handler("EventHub GraphQL", "/query"))
 	router.Handle("/query", srv)
 
 	handler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
+		AllowedHeaders: []string{
+			"Authorization",
+			"Content-Type",
+			"Accept",
+			"Origin",
+			"X-Requested-With",
+			"X-CSRF-Token",
+		},
+		ExposedHeaders:   []string{"Content-Length", "Content-Type"},
 		AllowCredentials: false,
-	}).Handler(middleware.AuthMiddleware(jwtManager)(router))
+		MaxAge:           300,
+	}).Handler(
+		gwmiddleware.RequestID(
+			gwmiddleware.Metrics(
+				gwmiddleware.RateLimit(20, 40)(
+					middleware.AuthMiddleware(jwtManager)(router),
+				),
+			),
+		),
+	)
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

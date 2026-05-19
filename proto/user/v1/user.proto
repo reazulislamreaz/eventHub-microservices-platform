@@ -9,6 +9,7 @@ service UserService {
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
   rpc ValidateCredentials(ValidateCredentialsRequest) returns (ValidateCredentialsResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 }
 
 message User {
@@ -52,4 +53,13 @@ message ValidateCredentialsRequest {
 message ValidateCredentialsResponse {
   User user = 1;
   bool valid = 2;
+}
+
+message UpdateProfileRequest {
+  string id = 1;
+  string name = 2;
+}
+
+message UpdateProfileResponse {
+  User user = 1;
 }

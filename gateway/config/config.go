@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	HTTPPort          string
+	SwaggerHost       string // optional; empty = same host as browser (recommended)
 	JWTSecret         string
 	JWTExpiration     time.Duration
 	UserServiceAddr   string
@@ -18,6 +19,7 @@ func Load() *Config {
 	expHours := 24
 	return &Config{
 		HTTPPort:          getEnv("HTTP_PORT", "8080"),
+		SwaggerHost:       getEnv("SWAGGER_HOST", ""),
 		JWTSecret:         getEnv("JWT_SECRET", "eventhub-dev-secret-change-in-production"),
 		JWTExpiration:     time.Duration(expHours) * time.Hour,
 		UserServiceAddr:   getEnv("USER_SERVICE_ADDR", "localhost:50051"),

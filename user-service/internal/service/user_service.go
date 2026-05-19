@@ -23,6 +23,7 @@ type UserService interface {
 	GetUser(ctx context.Context, id uuid.UUID) (*model.User, error)
 	ListUsers(ctx context.Context) ([]model.User, error)
 	ValidateCredentials(ctx context.Context, email, password string) (*model.User, error)
+	UpdateProfile(ctx context.Context, id uuid.UUID, name string) (*model.User, error)
 }
 
 type userService struct {
@@ -89,4 +90,12 @@ func (s *userService) ValidateCredentials(ctx context.Context, email, password s
 		return nil, ErrInvalidCredentials
 	}
 	return user, nil
+}
+
+func (s *userService) UpdateProfile(ctx context.Context, id uuid.UUID, name string) (*model.User, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, ErrInvalidInput
+	}
+	return s.repo.UpdateName(ctx, id, name)
 }

@@ -33,6 +33,7 @@ func mapEvent(e *eventv1.Event) *model.Event {
 		EndTime:        e.GetEndTime(),
 		Capacity:       int(e.GetCapacity()),
 		AvailableSeats: int(e.GetAvailableSeats()),
+		Status:         e.GetStatus(),
 		CreatedBy:      e.GetCreatedBy(),
 		CreatedAt:      e.GetCreatedAt(),
 	}

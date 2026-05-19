@@ -29,8 +29,22 @@ type Event struct {
 	EndTime        string `json:"endTime" example:"2026-06-15T18:00:00Z"`
 	Capacity       int    `json:"capacity" example:"100"`
 	AvailableSeats int    `json:"availableSeats" example:"95"`
+	Status         string `json:"status" example:"published" enums:"published,cancelled"`
 	CreatedBy      string `json:"createdBy" example:"550e8400-e29b-41d4-a716-446655440000"`
 	CreatedAt      string `json:"createdAt" example:"2026-05-19T12:00:00Z"`
+}
+
+// EventPage is a paginated list of events.
+type EventPage struct {
+	Events   []Event `json:"events"`
+	Total    int     `json:"total" example:"42"`
+	Page     int     `json:"page" example:"1"`
+	PageSize int     `json:"pageSize" example:"20"`
+}
+
+// UpdateProfileRequest updates the authenticated user's profile.
+type UpdateProfileRequest struct {
+	Name string `json:"name" example:"Alice Updated"`
 }
 
 // Ticket represents a booking for an event.

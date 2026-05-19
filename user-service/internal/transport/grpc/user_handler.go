@@ -55,6 +55,18 @@ func (h *UserHandler) ListUsers(ctx context.Context, _ *userv1.ListUsersRequest)
 	return resp, nil
 }
 
+func (h *UserHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+	user, err := h.svc.UpdateProfile(ctx, id, req.GetName())
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &userv1.UpdateProfileResponse{User: toProtoUser(user)}, nil
+}
+
 func (h *UserHandler) ValidateCredentials(ctx context.Context, req *userv1.ValidateCredentialsRequest) (*userv1.ValidateCredentialsResponse, error) {
 	user, err := h.svc.ValidateCredentials(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {

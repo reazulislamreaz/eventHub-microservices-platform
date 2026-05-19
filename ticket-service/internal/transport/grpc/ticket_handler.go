@@ -39,6 +39,22 @@ func (h *TicketHandler) CreateTicket(ctx context.Context, req *ticketv1.CreateTi
 	return &ticketv1.CreateTicketResponse{Ticket: toProtoTicket(ticket)}, nil
 }
 
+func (h *TicketHandler) CancelTicket(ctx context.Context, req *ticketv1.CancelTicketRequest) (*ticketv1.CancelTicketResponse, error) {
+	ticketID, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid ticket id")
+	}
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+	ticket, err := h.svc.CancelTicket(ctx, ticketID, userID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &ticketv1.CancelTicketResponse{Ticket: toProtoTicket(ticket)}, nil
+}
+
 func (h *TicketHandler) GetTicketsByUser(ctx context.Context, req *ticketv1.GetTicketsByUserRequest) (*ticketv1.GetTicketsByUserResponse, error) {
 	userID, err := uuid.Parse(req.GetUserId())
 	if err != nil {
@@ -89,6 +105,8 @@ func mapError(err error) error {
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, repository.ErrTicketNotFound):
 		return status.Error(codes.NotFound, err.Error())
+	case errors.Is(err, repository.ErrTicketNotCancellable):
+		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Error(codes.Internal, "internal error")
 	}

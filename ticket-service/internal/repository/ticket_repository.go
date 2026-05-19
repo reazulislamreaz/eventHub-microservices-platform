@@ -12,11 +12,14 @@ import (
 var ErrTicketNotFound = errors.New("ticket not found")
 var ErrDuplicateBooking = errors.New("user already has a ticket for this event")
 
+var ErrTicketNotCancellable = errors.New("ticket cannot be cancelled")
+
 type TicketRepository interface {
 	Create(ctx context.Context, ticket *model.Ticket) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Ticket, error)
 	GetByUser(ctx context.Context, userID uuid.UUID) ([]model.Ticket, error)
 	ExistsForUserEvent(ctx context.Context, userID, eventID uuid.UUID) (bool, error)
+	Cancel(ctx context.Context, id, userID uuid.UUID) (*model.Ticket, error)
 }
 
 type ticketRepository struct {
@@ -52,4 +55,26 @@ func (r *ticketRepository) ExistsForUserEvent(ctx context.Context, userID, event
 		Where("user_id = ? AND event_id = ? AND status = ?", userID, eventID, model.StatusConfirmed).
 		Count(&count).Error
 	return count > 0, err
+}
+
+func (r *ticketRepository) Cancel(ctx context.Context, id, userID uuid.UUID) (*model.Ticket, error) {
+	var ticket model.Ticket
+	err := r.db.WithContext(ctx).First(&ticket, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTicketNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if ticket.UserID != userID {
+		return nil, ErrTicketNotFound
+	}
+	if ticket.Status != model.StatusConfirmed {
+		return nil, ErrTicketNotCancellable
+	}
+	ticket.Status = model.StatusCancelled
+	if err := r.db.WithContext(ctx).Save(&ticket).Error; err != nil {
+		return nil, err
+	}
+	return &ticket, nil
 }

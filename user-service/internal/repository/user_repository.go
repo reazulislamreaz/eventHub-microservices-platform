@@ -16,6 +16,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	List(ctx context.Context) ([]model.User, error)
+	UpdateName(ctx context.Context, id uuid.UUID, name string) (*model.User, error)
 }
 
 type userRepository struct {
@@ -58,4 +59,19 @@ func (r *userRepository) List(ctx context.Context) ([]model.User, error) {
 	var users []model.User
 	err := r.db.WithContext(ctx).Order("created_at DESC").Find(&users).Error
 	return users, err
+}
+
+func (r *userRepository) UpdateName(ctx context.Context, id uuid.UUID, name string) (*model.User, error) {
+	var user model.User
+	if err := r.db.WithContext(ctx).First(&user, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	user.Name = name
+	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }

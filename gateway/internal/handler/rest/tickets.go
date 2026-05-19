@@ -88,6 +88,32 @@ func (h *Handler) GetUserTickets(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tickets)
 }
 
+// CancelTicket godoc
+// @Summary      Cancel ticket
+// @Description  Cancels a booking and releases the seat back to the event
+// @Tags         tickets
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "Ticket ID"
+// @Success      200  {object}  Ticket
+// @Router       /api/v1/tickets/{id}/cancel [post]
+func (h *Handler) CancelTicket(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	ticketID := mux.Vars(r)["id"]
+	resp, err := h.Clients.Ticket.CancelTicket(r.Context(), &ticketv1.CancelTicketRequest{
+		Id: ticketID, UserId: claims.UserID,
+	})
+	if err != nil {
+		writeGRPCError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, mapProtoTicket(resp.GetTicket()))
+}
+
 func mapProtoTicket(t *ticketv1.Ticket) Ticket {
 	return Ticket{
 		ID:         t.GetId(),
