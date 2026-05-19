@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/eventhub/gateway/config"
 	"github.com/eventhub/gateway/internal/client"
+	"github.com/eventhub/pkg/grpcutil"
 	"github.com/eventhub/gateway/internal/graph"
 	"github.com/eventhub/gateway/internal/handler/rest"
 	"github.com/eventhub/gateway/internal/middleware"
@@ -70,6 +73,20 @@ func main() {
 
 	cfg := config.Load()
 
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer startupCancel()
+	for _, dep := range []struct {
+		addr, name string
+	}{
+		{cfg.UserServiceAddr, "user.v1.UserService"},
+		{cfg.EventServiceAddr, "event.v1.EventService"},
+		{cfg.TicketServiceAddr, "ticket.v1.TicketService"},
+	} {
+		if err := grpcutil.WaitForService(startupCtx, dep.addr, dep.name, log, 60); err != nil {
+			log.Fatal("dependency not ready", zap.String("service", dep.name), zap.Error(err))
+		}
+	}
+
 	clients, err := client.NewGRPCClients(cfg.UserServiceAddr, cfg.EventServiceAddr, cfg.TicketServiceAddr)
 	if err != nil {
 		log.Fatal("grpc clients", zap.Error(err))
@@ -92,21 +109,31 @@ func main() {
 	rest.RegisterRoutes(router, restHandler)
 
 	router.Handle("/health", http.HandlerFunc(rest.Health)).Methods(http.MethodGet)
-	router.Handle("/ready", http.HandlerFunc(rest.Ready)).Methods(http.MethodGet)
+	router.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		rest.ReadyWithDeps(w, r, map[string]string{
+			"user":   cfg.UserServiceAddr,
+			"event":  cfg.EventServiceAddr,
+			"ticket": cfg.TicketServiceAddr,
+		}, log)
+	}).Methods(http.MethodGet)
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	router.Handle("/", playground.Handler("EventHub GraphQL", "/query"))
 	router.Handle("/query", srv)
 
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 	}).Handler(middleware.AuthMiddleware(jwtManager)(router))
 
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.HTTPPort,
-		Handler: handler,
+		Addr:              ":" + cfg.HTTPPort,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {
@@ -126,5 +153,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Info("shutting down gateway")
-	_ = httpServer.Close()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Error("shutdown", zap.Error(err))
+	}
 }

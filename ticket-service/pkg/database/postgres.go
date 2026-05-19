@@ -20,5 +20,13 @@ func Connect(dsn string) (*gorm.DB, error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&model.Ticket{})
+	if err := db.AutoMigrate(&model.Ticket{}); err != nil {
+		return err
+	}
+	// Prevent duplicate confirmed bookings per user/event (race-safe with app check).
+	return db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_user_event_confirmed
+		ON tickets (user_id, event_id)
+		WHERE status = 'confirmed'
+	`).Error
 }

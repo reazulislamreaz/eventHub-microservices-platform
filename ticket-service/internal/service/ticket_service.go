@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
 	eventv1 "github.com/eventhub/proto/gen/event/v1"
 	"github.com/eventhub/ticket-service/internal/model"
@@ -65,7 +66,13 @@ func (s *ticketService) CreateTicket(ctx context.Context, userID, eventID uuid.U
 		Status:  model.StatusConfirmed,
 	}
 	if err := s.repo.Create(ctx, ticket); err != nil {
-		_, _ = s.eventClient.ReleaseSeat(ctx, &eventv1.ReleaseSeatRequest{EventId: eventID.String()})
+		if isDuplicateKey(err) {
+			_, _ = s.eventClient.ReleaseSeat(ctx, &eventv1.ReleaseSeatRequest{EventId: eventID.String()})
+			return nil, ErrDuplicateBooking
+		}
+		if _, releaseErr := s.eventClient.ReleaseSeat(ctx, &eventv1.ReleaseSeatRequest{EventId: eventID.String()}); releaseErr != nil {
+			return nil, errors.Join(err, releaseErr)
+		}
 		return nil, err
 	}
 	return ticket, nil
@@ -77,4 +84,12 @@ func (s *ticketService) GetTicketsByUser(ctx context.Context, userID uuid.UUID) 
 
 func (s *ticketService) GetTicket(ctx context.Context, id uuid.UUID) (*model.Ticket, error) {
 	return s.repo.GetByID(ctx, id)
+}
+
+func isDuplicateKey(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate key") || strings.Contains(msg, "unique constraint")
 }

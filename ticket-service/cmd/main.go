@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/eventhub/pkg/database"
+	"github.com/eventhub/pkg/grpcutil"
 	"github.com/eventhub/pkg/logger"
 	eventv1 "github.com/eventhub/proto/gen/event/v1"
 	ticketv1 "github.com/eventhub/proto/gen/ticket/v1"
@@ -15,7 +17,7 @@ import (
 	"github.com/eventhub/ticket-service/internal/repository"
 	ticketservice "github.com/eventhub/ticket-service/internal/service"
 	ticketgrpc "github.com/eventhub/ticket-service/internal/transport/grpc"
-	"github.com/eventhub/ticket-service/pkg/database"
+	ticketdb "github.com/eventhub/ticket-service/pkg/database"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -23,7 +25,6 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"gorm.io/gorm"
 )
 
 func main() {
@@ -40,15 +41,20 @@ func main() {
 		log.Fatal("load config", zap.Error(err))
 	}
 
-	db, err := database.Connect(cfg.DB.DSN())
+	db, err := ticketdb.Connect(cfg.DB.DSN())
 	if err != nil {
 		log.Fatal("database connect", zap.Error(err))
 	}
-	if err := waitForDB(db, log); err != nil {
+	if err := database.WaitForPostgres(db, log, 30); err != nil {
 		log.Fatal("database ready", zap.Error(err))
 	}
-	if err := database.Migrate(db); err != nil {
+	if err := ticketdb.Migrate(db); err != nil {
 		log.Fatal("database migrate", zap.Error(err))
+	}
+
+	ctx := context.Background()
+	if err := grpcutil.WaitForService(ctx, cfg.EventServiceAddr, "event.v1.EventService", log, 60); err != nil {
+		log.Fatal("event-service not ready", zap.Error(err))
 	}
 
 	eventConn, err := grpc.NewClient(cfg.EventServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -87,25 +93,4 @@ func main() {
 	<-quit
 	log.Info("shutting down ticket-service")
 	grpcServer.GracefulStop()
-}
-
-func waitForDB(db *gorm.DB, log *zap.Logger) error {
-	sqlDB, err := db.DB()
-	if err != nil {
-		return err
-	}
-	var lastErr error
-	for i := 0; i < 30; i++ {
-		if err := sqlDB.Ping(); err == nil {
-			return nil
-		} else {
-			lastErr = err
-		}
-		log.Warn("waiting for database", zap.Int("attempt", i+1))
-		time.Sleep(time.Second)
-	}
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("database not ready")
 }

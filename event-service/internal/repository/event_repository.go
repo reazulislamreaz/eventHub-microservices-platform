@@ -36,10 +36,13 @@ func (r *eventRepository) Create(ctx context.Context, event *model.Event) error 
 func (r *eventRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Event, error) {
 	var event model.Event
 	err := r.db.WithContext(ctx).First(&event, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrEventNotFound
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEventNotFound
+		}
+		return nil, err
 	}
-	return &event, err
+	return &event, nil
 }
 
 func (r *eventRepository) List(ctx context.Context) ([]model.Event, error) {

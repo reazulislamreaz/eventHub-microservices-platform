@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/eventhub/user-service/internal/model"
@@ -16,7 +17,11 @@ func Admin(ctx context.Context, svc service.UserService, log *zap.Logger) {
 	}
 	_, err := svc.CreateUser(ctx, "admin@eventhub.io", "Platform Admin", "AdminPass123!", model.RoleAdmin)
 	if err != nil {
-		log.Warn("admin seed skipped", zap.Error(err))
+		if errors.Is(err, service.ErrEmailTaken) {
+			log.Info("admin account already exists", zap.String("email", "admin@eventhub.io"))
+			return
+		}
+		log.Warn("admin seed failed", zap.Error(err))
 		return
 	}
 	log.Info("seeded default admin", zap.String("email", "admin@eventhub.io"))

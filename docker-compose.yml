@@ -51,6 +51,7 @@ services:
     build:
       context: .
       dockerfile: user-service/Dockerfile
+    restart: unless-stopped
     environment:
       SEED_ADMIN: "true"
       GRPC_PORT: "50051"
@@ -65,11 +66,18 @@ services:
     depends_on:
       postgres-user:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 50051 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   event-service:
     build:
       context: .
       dockerfile: event-service/Dockerfile
+    restart: unless-stopped
     environment:
       GRPC_PORT: "50052"
       DB_HOST: postgres-event
@@ -83,11 +91,18 @@ services:
     depends_on:
       postgres-event:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 50052 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   ticket-service:
     build:
       context: .
       dockerfile: ticket-service/Dockerfile
+    restart: unless-stopped
     environment:
       GRPC_PORT: "50053"
       EVENT_SERVICE_ADDR: event-service:50052
@@ -103,12 +118,19 @@ services:
       postgres-ticket:
         condition: service_healthy
       event-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 50053 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   gateway:
     build:
       context: .
       dockerfile: gateway/Dockerfile
+    restart: unless-stopped
     environment:
       HTTP_PORT: "8080"
       JWT_SECRET: eventhub-dev-secret-change-in-production
@@ -118,9 +140,18 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - user-service
-      - event-service
-      - ticket-service
+      user-service:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+      ticket-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   user_pg_data:

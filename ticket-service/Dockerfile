@@ -3,10 +3,9 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache git
 
-COPY go.work go.work.sum* ./
+COPY go.work go.work.sum ./
 COPY pkg/ pkg/
 COPY proto/ proto/
-COPY event-service/go.mod event-service/go.sum* ./event-service/
 COPY ticket-service/ ticket-service/
 
 WORKDIR /app/ticket-service
