@@ -9,6 +9,7 @@ COPY proto/ proto/
 COPY event-service/ event-service/
 
 WORKDIR /app/event-service
+ENV GOWORK=off
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /event-service ./cmd
 

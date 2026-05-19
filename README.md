@@ -88,11 +88,14 @@ service/
 # Clone and enter the repo
 cd learn-go
 
+# Use system Docker (not Desktop) if commands hang:
+docker context use default
+
 # Start all services + databases
 docker compose up --build -d
 
-# Wait ~30s for health checks, then open GraphQL Playground
-open http://localhost:8080
+# Wait ~30s for health checks, then open GraphQL Playground (default host port 8081)
+open http://localhost:8082
 ```
 
 Default admin (seeded when `SEED_ADMIN=true`):
@@ -353,6 +356,50 @@ See [.env.example](.env.example) for all configuration options.
 | `make build` | Build all service binaries to `bin/` |
 | `make docker-up` | Start stack with Docker Compose |
 | `make docker-down` | Stop stack and remove volumes |
+
+## Troubleshooting Docker
+
+### `docker compose` hangs or never finishes
+
+Your Docker context may point to **Docker Desktop** while it is not running:
+
+```bash
+docker context ls
+docker context use default   # use system Docker socket
+docker ps                    # should respond in < 1 second
+```
+
+If you use Docker Desktop, open it and wait until it shows **Running**, then:
+
+```bash
+docker context use desktop-linux
+```
+
+### Build fails: `cannot load module ../gateway listed in go.work`
+
+Fixed in Dockerfiles via `ENV GOWORK=off`. Pull latest changes and rebuild:
+
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Port already in use
+
+If port `8080` is taken, change the gateway mapping in `docker-compose.yml`:
+
+```yaml
+ports:
+  - "8081:8080"   # use 8081 on host instead
+```
+
+### Check service status
+
+```bash
+docker compose ps
+docker compose logs gateway
+curl http://localhost:8080/health
+```
 
 ## License
 

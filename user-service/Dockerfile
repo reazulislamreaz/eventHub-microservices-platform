@@ -9,6 +9,7 @@ COPY proto/ proto/
 COPY user-service/ user-service/
 
 WORKDIR /app/user-service
+ENV GOWORK=off
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /user-service ./cmd
 

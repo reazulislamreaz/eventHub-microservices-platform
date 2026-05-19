@@ -9,6 +9,7 @@ COPY proto/ proto/
 COPY ticket-service/ ticket-service/
 
 WORKDIR /app/ticket-service
+ENV GOWORK=off
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /ticket-service ./cmd
 

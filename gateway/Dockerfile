@@ -9,6 +9,7 @@ COPY proto/ proto/
 COPY gateway/ gateway/
 
 WORKDIR /app/gateway
+ENV GOWORK=off
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /gateway ./cmd
 
