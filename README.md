@@ -1,0 +1,320 @@
+# EventHub Microservices Platform
+
+Production-oriented event management backend built with Go microservices, gRPC, GraphQL, and PostgreSQL.
+
+## Overview
+
+EventHub lets users browse events, register accounts, book tickets, and receive unique ticket codes. Admins create events with capacity management. Each bounded context runs as an independent service with its own database.
+
+## Architecture
+
+```
+                    ┌─────────────────┐
+                    │  GraphQL Gateway │  :8080  (gqlgen + JWT)
+                    └────────┬────────┘
+           gRPC              │              gRPC
+     ┌──────────────┐  ┌─────┴──────┐  ┌──────────────┐
+     │ User Service │  │Event Service│  │Ticket Service│
+     │   :50051     │  │   :50052    │  │   :50053     │
+     └──────┬───────┘  └─────┬──────┘  └──────┬───────┘
+            │                │                 │
+     ┌──────▼───────┐  ┌─────▼──────┐  ┌──────▼───────┐
+     │ PostgreSQL   │  │ PostgreSQL │  │ PostgreSQL   │
+     │  user_db     │  │  event_db  │  │  ticket_db   │
+     └──────────────┘  └────────────┘  └──────────────┘
+                              ▲
+                              │ ReserveSeat (gRPC)
+                              └──────── Ticket Service
+```
+
+| Service        | Responsibility                          | Port  |
+|----------------|-----------------------------------------|-------|
+| **Gateway**    | GraphQL API, JWT auth, Swagger REST     | 8080  |
+| **User**       | Registration, authentication, profiles  | 50051 |
+| **Event**      | Event CRUD, seat inventory              | 50052 |
+| **Ticket**     | Booking, ticket codes, user tickets     | 50053 |
+
+## Tech Stack
+
+- **Go 1.22+** with `go.work` monorepo
+- **gRPC** + Protocol Buffers for inter-service RPC
+- **GraphQL** ([gqlgen](https://github.com/99designs/gqlgen)) as API gateway
+- **PostgreSQL** (one database per service)
+- **GORM** for ORM and migrations (`AutoMigrate` + SQL migration files)
+- **JWT** (HS256) for gateway authentication
+- **Swagger** for REST health endpoints
+- **Docker Compose** for local orchestration
+
+## Project Structure
+
+```
+.
+├── gateway/                 # GraphQL gateway
+├── user-service/
+├── event-service/
+├── ticket-service/
+├── proto/                   # Shared .proto definitions + generated code
+├── pkg/                     # Shared logger utilities
+├── docker-compose.yml
+├── Makefile
+└── README.md
+```
+
+Each service follows **clean architecture**:
+
+```
+service/
+├── cmd/                     # Entry point
+├── config/
+├── internal/
+│   ├── model/
+│   ├── repository/
+│   ├── service/
+│   └── transport/grpc/
+├── migrations/
+├── pkg/
+└── Dockerfile
+```
+
+## Prerequisites
+
+- Go 1.22+
+- Docker & Docker Compose
+- `protoc` (optional, for regenerating protos — see Makefile)
+
+## Quick Start (Docker)
+
+```bash
+# Clone and enter the repo
+cd learn-go
+
+# Start all services + databases
+docker compose up --build -d
+
+# Wait ~30s for health checks, then open GraphQL Playground
+open http://localhost:8080
+```
+
+Default admin (seeded when `SEED_ADMIN=true`):
+
+| Field    | Value              |
+|----------|--------------------|
+| Email    | admin@eventhub.io  |
+| Password | AdminPass123!      |
+
+## Local Development (without Docker)
+
+### 1. Start PostgreSQL instances
+
+Run three PostgreSQL containers (or local instances) on ports `5432`, `5433`, `5434` with databases `user_db`, `event_db`, `ticket_db`.
+
+### 2. Environment
+
+```bash
+cp .env.example .env
+```
+
+### 3. Generate protos (if needed)
+
+```bash
+make proto
+```
+
+### 4. Run services
+
+```bash
+# Terminal 1
+cd user-service && SEED_ADMIN=true go run ./cmd
+
+# Terminal 2
+cd event-service && go run ./cmd
+
+# Terminal 3
+cd ticket-service && go run ./cmd
+
+# Terminal 4
+cd gateway && go run ./cmd
+```
+
+### 5. Build all binaries
+
+```bash
+make build
+```
+
+## API Usage
+
+### GraphQL Playground
+
+- Playground: http://localhost:8080
+- Endpoint: `POST http://localhost:8080/query`
+
+### Register a user
+
+```graphql
+mutation {
+  register(input: {
+    email: "alice@example.com"
+    name: "Alice"
+    password: "SecurePass123"
+  }) {
+    token
+    user { id email role }
+  }
+}
+```
+
+### Login
+
+```graphql
+mutation {
+  login(input: {
+    email: "admin@eventhub.io"
+    password: "AdminPass123!"
+  }) {
+    token
+    user { id email role }
+  }
+}
+```
+
+Use the returned `token` in headers:
+
+```
+Authorization: Bearer <token>
+```
+
+### List events (public)
+
+```graphql
+query {
+  getEvents {
+    id
+    title
+    location
+    startTime
+    availableSeats
+  }
+}
+```
+
+### Create event (admin only)
+
+```graphql
+mutation {
+  createEvent(input: {
+    title: "Go Conference 2026"
+    description: "Annual Go community meetup"
+    location: "Dhaka, Bangladesh"
+    startTime: "2026-06-15T09:00:00Z"
+    endTime: "2026-06-15T18:00:00Z"
+    capacity: 100
+  }) {
+    id
+    title
+    availableSeats
+  }
+}
+```
+
+### Book a ticket (authenticated)
+
+```graphql
+mutation {
+  bookTicket(eventId: "<event-uuid>") {
+    id
+    ticketCode
+    status
+    eventId
+  }
+}
+```
+
+### Get tickets by user
+
+```graphql
+query {
+  getTicketsByUser(userId: "<user-uuid>") {
+    id
+    ticketCode
+    eventId
+    status
+  }
+}
+```
+
+### List users
+
+```graphql
+query {
+  getUsers {
+    id
+    email
+    name
+    role
+  }
+}
+```
+
+## REST / Swagger
+
+| Endpoint        | Description        |
+|-----------------|--------------------|
+| `GET /health`   | Liveness check     |
+| `GET /ready`    | Readiness check    |
+| `GET /swagger/` | Swagger UI         |
+
+Example:
+
+```bash
+curl http://localhost:8080/health
+```
+
+## gRPC Services
+
+Proto definitions live in `proto/`. Generated Go code is in `proto/gen/`.
+
+| Service | RPCs |
+|---------|------|
+| UserService | `CreateUser`, `GetUser`, `ListUsers`, `ValidateCredentials` |
+| EventService | `CreateEvent`, `ListEvents`, `GetEvent`, `ReserveSeat`, `ReleaseSeat` |
+| TicketService | `CreateTicket`, `GetTicketsByUser`, `GetTicket` |
+
+Regenerate:
+
+```bash
+make proto
+```
+
+## Security
+
+- JWT issued by gateway on `register` / `login`
+- `@auth` directive protects `bookTicket`, `getTicketsByUser`
+- `@hasRole(role: "admin")` protects `createEvent`
+- Passwords hashed with bcrypt in User Service
+- Set `JWT_SECRET` in production (never use the default)
+
+## Database Migrations
+
+Each service runs GORM `AutoMigrate` on startup. SQL reference migrations:
+
+- `user-service/migrations/001_init.sql`
+- `event-service/migrations/001_init.sql`
+- `ticket-service/migrations/001_init.sql`
+
+## Environment Variables
+
+See [.env.example](.env.example) for all configuration options.
+
+## Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make proto` | Regenerate gRPC code from protos |
+| `make build` | Build all service binaries to `bin/` |
+| `make docker-up` | Start stack with Docker Compose |
+| `make docker-down` | Stop stack and remove volumes |
+
+## License
+
+MIT
