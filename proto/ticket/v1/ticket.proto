@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package ticket.v1;
+
+option go_package = "github.com/eventhub/proto/gen/ticket/v1;ticketv1";
+
+service TicketService {
+  rpc CreateTicket(CreateTicketRequest) returns (CreateTicketResponse);
+  rpc GetTicketsByUser(GetTicketsByUserRequest) returns (GetTicketsByUserResponse);
+  rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
+}
+
+message Ticket {
+  string id = 1;
+  string user_id = 2;
+  string event_id = 3;
+  string status = 4;
+  string ticket_code = 5;
+  string created_at = 6;
+}
+
+message CreateTicketRequest {
+  string user_id = 1;
+  string event_id = 2;
+}
+
+message CreateTicketResponse {
+  Ticket ticket = 1;
+}
+
+message GetTicketsByUserRequest {
+  string user_id = 1;
+}
+
+message GetTicketsByUserResponse {
+  repeated Ticket tickets = 1;
+}
+
+message GetTicketRequest {
+  string id = 1;
+}
+
+message GetTicketResponse {
+  Ticket ticket = 1;
+}

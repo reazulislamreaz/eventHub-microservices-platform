@@ -1,0 +1,10 @@
+go 1.22.7
+
+use (
+	./event-service
+	./gateway
+	./pkg
+	./proto
+	./ticket-service
+	./user-service
+)

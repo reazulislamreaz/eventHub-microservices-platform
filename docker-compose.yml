@@ -1,0 +1,128 @@
+services:
+  postgres-user:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eventhub
+      POSTGRES_PASSWORD: eventhub_secret
+      POSTGRES_DB: user_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - user_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventhub -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-event:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eventhub
+      POSTGRES_PASSWORD: eventhub_secret
+      POSTGRES_DB: event_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - event_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventhub -d event_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-ticket:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eventhub
+      POSTGRES_PASSWORD: eventhub_secret
+      POSTGRES_DB: ticket_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - ticket_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventhub -d ticket_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    environment:
+      SEED_ADMIN: "true"
+      GRPC_PORT: "50051"
+      DB_HOST: postgres-user
+      DB_PORT: "5432"
+      DB_USER: eventhub
+      DB_PASSWORD: eventhub_secret
+      DB_NAME: user_db
+      DB_SSLMODE: disable
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+
+  event-service:
+    build:
+      context: .
+      dockerfile: event-service/Dockerfile
+    environment:
+      GRPC_PORT: "50052"
+      DB_HOST: postgres-event
+      DB_PORT: "5432"
+      DB_USER: eventhub
+      DB_PASSWORD: eventhub_secret
+      DB_NAME: event_db
+      DB_SSLMODE: disable
+    ports:
+      - "50052:50052"
+    depends_on:
+      postgres-event:
+        condition: service_healthy
+
+  ticket-service:
+    build:
+      context: .
+      dockerfile: ticket-service/Dockerfile
+    environment:
+      GRPC_PORT: "50053"
+      EVENT_SERVICE_ADDR: event-service:50052
+      DB_HOST: postgres-ticket
+      DB_PORT: "5432"
+      DB_USER: eventhub
+      DB_PASSWORD: eventhub_secret
+      DB_NAME: ticket_db
+      DB_SSLMODE: disable
+    ports:
+      - "50053:50053"
+    depends_on:
+      postgres-ticket:
+        condition: service_healthy
+      event-service:
+        condition: service_started
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      HTTP_PORT: "8080"
+      JWT_SECRET: eventhub-dev-secret-change-in-production
+      USER_SERVICE_ADDR: user-service:50051
+      EVENT_SERVICE_ADDR: event-service:50052
+      TICKET_SERVICE_ADDR: ticket-service:50053
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service
+      - event-service
+      - ticket-service
+
+volumes:
+  user_pg_data:
+  event_pg_data:
+  ticket_pg_data:

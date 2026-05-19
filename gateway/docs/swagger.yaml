@@ -1,0 +1,55 @@
+basePath: /
+definitions:
+  rest.HealthResponse:
+    description: Health check response
+    properties:
+      service:
+        example: eventhub-gateway
+        type: string
+      status:
+        example: ok
+        type: string
+      timestamp:
+        example: "2026-05-19T12:00:00Z"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: GraphQL gateway and REST utilities for EventHub microservices platform.
+  title: EventHub Gateway API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Returns gateway health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /ready:
+    get:
+      description: Returns gateway readiness status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.HealthResponse'
+      summary: Readiness check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: Enter "Bearer {token}"
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
