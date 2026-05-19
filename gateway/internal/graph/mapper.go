@@ -29,6 +29,8 @@ func mapEvent(e *eventv1.Event) *model.Event {
 		Title:          e.GetTitle(),
 		Description:    e.GetDescription(),
 		Location:       e.GetLocation(),
+		Category:       e.GetCategory(),
+		PriceCents:     int(e.GetPriceCents()),
 		StartTime:      e.GetStartTime(),
 		EndTime:        e.GetEndTime(),
 		Capacity:       int(e.GetCapacity()),
@@ -43,12 +45,28 @@ func mapTicket(t *ticketv1.Ticket) *model.Ticket {
 	if t == nil {
 		return nil
 	}
-	return &model.Ticket{
+	ticket := &model.Ticket{
 		ID:         t.GetId(),
 		UserID:     t.GetUserId(),
 		EventID:    t.GetEventId(),
 		Status:     t.GetStatus(),
 		TicketCode: t.GetTicketCode(),
 		CreatedAt:  t.GetCreatedAt(),
+	}
+	if checked := t.GetCheckedInAt(); checked != "" {
+		ticket.CheckedInAt = &checked
+	}
+	return ticket
+}
+
+func mapWaitlist(w *ticketv1.WaitlistEntry) *model.WaitlistEntry {
+	if w == nil {
+		return nil
+	}
+	return &model.WaitlistEntry{
+		ID:        w.GetId(),
+		UserID:    w.GetUserId(),
+		EventID:   w.GetEventId(),
+		CreatedAt: w.GetCreatedAt(),
 	}
 }

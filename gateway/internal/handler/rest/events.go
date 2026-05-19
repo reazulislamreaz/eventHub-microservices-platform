@@ -20,6 +20,7 @@ import (
 // @Param        search    query  string  false  "Search title/description"
 // @Param        location  query  string  false  "Filter by location"
 // @Param        status    query  string  false  "Event status (admin)"
+// @Param        category  query  string  false  "Category filter (music, tech, sports, ...)"
 // @Success      200       {object}  EventPage
 // @Failure      500       {object}  ErrorResponse
 // @Router       /api/v1/events [get]
@@ -40,6 +41,7 @@ func (h *Handler) ListEvents(w http.ResponseWriter, r *http.Request) {
 		Search:   q.Get("search"),
 		Location: q.Get("location"),
 		Status:   q.Get("status"),
+		Category: q.Get("category"),
 	})
 	if err != nil {
 		writeGRPCError(w, err)
@@ -99,6 +101,7 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := h.Clients.Event.CreateEvent(r.Context(), &eventv1.CreateEventRequest{
 		Title: req.Title, Description: req.Description, Location: req.Location,
+		Category: req.Category, PriceCents: req.PriceCents,
 		StartTime: req.StartTime, EndTime: req.EndTime, Capacity: req.Capacity,
 		CreatedBy: claims.UserID,
 	})
@@ -131,7 +134,8 @@ func (h *Handler) CancelEvent(w http.ResponseWriter, r *http.Request) {
 func mapProtoEvent(e *eventv1.Event) Event {
 	return Event{
 		ID: e.GetId(), Title: e.GetTitle(), Description: e.GetDescription(),
-		Location: e.GetLocation(), StartTime: e.GetStartTime(), EndTime: e.GetEndTime(),
+		Location: e.GetLocation(), Category: e.GetCategory(), PriceCents: e.GetPriceCents(),
+		StartTime: e.GetStartTime(), EndTime: e.GetEndTime(),
 		Capacity: int(e.GetCapacity()), AvailableSeats: int(e.GetAvailableSeats()),
 		Status: e.GetStatus(), CreatedBy: e.GetCreatedBy(), CreatedAt: e.GetCreatedAt(),
 	}

@@ -17,6 +17,8 @@ type Event {
   title: String!
   description: String!
   location: String!
+  category: String!
+  priceCents: Int!
   startTime: String!
   endTime: String!
   capacity: Int!
@@ -40,6 +42,40 @@ type Ticket {
   status: String!
   ticketCode: String!
   createdAt: String!
+  checkedInAt: String
+}
+
+type WaitlistEntry {
+  id: ID!
+  userId: ID!
+  eventId: ID!
+  createdAt: String!
+}
+
+type EventStats {
+  totalEvents: Int!
+  publishedEvents: Int!
+  cancelledEvents: Int!
+  totalCapacity: Int!
+  seatsAvailable: Int!
+}
+
+type TicketStats {
+  totalTickets: Int!
+  confirmedTickets: Int!
+  checkedInTickets: Int!
+  waitlistEntries: Int!
+}
+
+type UserStats {
+  totalUsers: Int!
+  adminUsers: Int!
+}
+
+type PlatformStats {
+  users: UserStats!
+  events: EventStats!
+  tickets: TicketStats!
 }
 
 type AuthPayload {
@@ -62,6 +98,8 @@ input CreateEventInput {
   title: String!
   description: String!
   location: String!
+  category: String
+  priceCents: Int
   startTime: String!
   endTime: String!
   capacity: Int!
@@ -75,8 +113,10 @@ type Query {
   getUsers: [User!]!
   getUser(id: ID!): User
   getEvent(id: ID!): Event
-  getEvents(page: Int, pageSize: Int, search: String, location: String, status: String): EventPage!
+  getEvents(page: Int, pageSize: Int, search: String, location: String, status: String, category: String): EventPage!
   getTicketsByUser(userId: ID!): [Ticket!]! @auth
+  verifyTicket(ticketCode: String!): Ticket! @auth
+  platformStats: PlatformStats! @auth @hasRole(role: "admin")
 }
 
 type Mutation {
@@ -87,4 +127,6 @@ type Mutation {
   cancelEvent(id: ID!): Event! @auth @hasRole(role: "admin")
   bookTicket(eventId: ID!): Ticket! @auth
   cancelTicket(ticketId: ID!): Ticket! @auth
+  joinWaitlist(eventId: ID!): WaitlistEntry! @auth
+  checkInTicket(ticketCode: String!): Ticket! @auth @hasRole(role: "admin")
 }

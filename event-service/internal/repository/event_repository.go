@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/eventhub/event-service/internal/model"
 	"github.com/google/uuid"
@@ -11,9 +12,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var ErrEventNotFound = errors.New("event not found")
-var ErrNoSeatsAvailable = errors.New("no seats available")
-var ErrEventCancelled = errors.New("event is cancelled")
+var (
+	ErrEventNotFound    = errors.New("event not found")
+	ErrNoSeatsAvailable = errors.New("no seats available")
+	ErrEventCancelled   = errors.New("event is cancelled")
+	ErrEventStarted     = errors.New("event has already started")
+)
 
 type EventFilter struct {
 	Page     int
@@ -21,6 +25,15 @@ type EventFilter struct {
 	Search   string
 	Location string
 	Status   string
+	Category string
+}
+
+type EventStats struct {
+	TotalEvents     int64
+	PublishedEvents int64
+	CancelledEvents int64
+	TotalCapacity   int64
+	SeatsAvailable  int64
 }
 
 type EventListResult struct {
@@ -35,6 +48,7 @@ type EventRepository interface {
 	Cancel(ctx context.Context, id uuid.UUID) (*model.Event, error)
 	ReserveSeat(ctx context.Context, id uuid.UUID) (*model.Event, error)
 	ReleaseSeat(ctx context.Context, id uuid.UUID) (*model.Event, error)
+	Stats(ctx context.Context) (*EventStats, error)
 }
 
 type eventRepository struct {
@@ -70,6 +84,9 @@ func (r *eventRepository) List(ctx context.Context, filter EventFilter) (*EventL
 	}
 	if filter.Location != "" {
 		q = q.Where("location ILIKE ?", "%"+filter.Location+"%")
+	}
+	if filter.Category != "" {
+		q = q.Where("category = ?", filter.Category)
 	}
 	if filter.Search != "" {
 		term := "%" + strings.ToLower(filter.Search) + "%"
@@ -134,6 +151,9 @@ func (r *eventRepository) ReserveSeat(ctx context.Context, id uuid.UUID) (*model
 		if event.Status == model.StatusCancelled {
 			return ErrEventCancelled
 		}
+		if !event.StartTime.After(time.Now()) {
+			return ErrEventStarted
+		}
 		if event.AvailableSeats <= 0 {
 			return ErrNoSeatsAvailable
 		}
@@ -165,4 +185,30 @@ func (r *eventRepository) ReleaseSeat(ctx context.Context, id uuid.UUID) (*model
 		return nil, err
 	}
 	return &event, nil
+}
+
+func (r *eventRepository) Stats(ctx context.Context) (*EventStats, error) {
+	var stats EventStats
+	if err := r.db.WithContext(ctx).Model(&model.Event{}).Count(&stats.TotalEvents).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Model(&model.Event{}).Where("status = ?", model.StatusPublished).Count(&stats.PublishedEvents).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Model(&model.Event{}).Where("status = ?", model.StatusCancelled).Count(&stats.CancelledEvents).Error; err != nil {
+		return nil, err
+	}
+	type agg struct {
+		TotalCapacity  int64
+		SeatsAvailable int64
+	}
+	var a agg
+	if err := r.db.WithContext(ctx).Model(&model.Event{}).
+		Select("COALESCE(SUM(capacity),0) as total_capacity, COALESCE(SUM(available_seats),0) as seats_available").
+		Scan(&a).Error; err != nil {
+		return nil, err
+	}
+	stats.TotalCapacity = a.TotalCapacity
+	stats.SeatsAvailable = a.SeatsAvailable
+	return &stats, nil
 }

@@ -20,13 +20,18 @@ func Connect(dsn string) (*gorm.DB, error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&model.Ticket{}); err != nil {
+	if err := db.AutoMigrate(&model.Ticket{}, &model.WaitlistEntry{}); err != nil {
 		return err
 	}
-	// Prevent duplicate confirmed bookings per user/event (race-safe with app check).
-	return db.Exec(`
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_user_event_confirmed
+	if err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_user_event_active
 		ON tickets (user_id, event_id)
-		WHERE status = 'confirmed'
+		WHERE status IN ('confirmed', 'checked_in')
+	`).Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_user_event
+		ON waitlist_entries (user_id, event_id)
 	`).Error
 }

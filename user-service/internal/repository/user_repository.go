@@ -11,12 +11,18 @@ import (
 
 var ErrUserNotFound = errors.New("user not found")
 
+type UserStats struct {
+	TotalUsers int64
+	AdminUsers int64
+}
+
 type UserRepository interface {
 	Create(ctx context.Context, user *model.User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	List(ctx context.Context) ([]model.User, error)
 	UpdateName(ctx context.Context, id uuid.UUID, name string) (*model.User, error)
+	Stats(ctx context.Context) (*UserStats, error)
 }
 
 type userRepository struct {
@@ -74,4 +80,15 @@ func (r *userRepository) UpdateName(ctx context.Context, id uuid.UUID, name stri
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Stats(ctx context.Context) (*UserStats, error) {
+	var stats UserStats
+	if err := r.db.WithContext(ctx).Model(&model.User{}).Count(&stats.TotalUsers).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("role = ?", model.RoleAdmin).Count(&stats.AdminUsers).Error; err != nil {
+		return nil, err
+	}
+	return &stats, nil
 }

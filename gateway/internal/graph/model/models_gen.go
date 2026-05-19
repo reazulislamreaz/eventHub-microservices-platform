@@ -8,12 +8,14 @@ type AuthPayload struct {
 }
 
 type CreateEventInput struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Location    string `json:"location"`
-	StartTime   string `json:"startTime"`
-	EndTime     string `json:"endTime"`
-	Capacity    int    `json:"capacity"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Location    string  `json:"location"`
+	Category    *string `json:"category,omitempty"`
+	PriceCents  *int    `json:"priceCents,omitempty"`
+	StartTime   string  `json:"startTime"`
+	EndTime     string  `json:"endTime"`
+	Capacity    int     `json:"capacity"`
 }
 
 type Event struct {
@@ -21,6 +23,8 @@ type Event struct {
 	Title          string `json:"title"`
 	Description    string `json:"description"`
 	Location       string `json:"location"`
+	Category       string `json:"category"`
+	PriceCents     int    `json:"priceCents"`
 	StartTime      string `json:"startTime"`
 	EndTime        string `json:"endTime"`
 	Capacity       int    `json:"capacity"`
@@ -37,12 +41,26 @@ type EventPage struct {
 	PageSize int      `json:"pageSize"`
 }
 
+type EventStats struct {
+	TotalEvents     int `json:"totalEvents"`
+	PublishedEvents int `json:"publishedEvents"`
+	CancelledEvents int `json:"cancelledEvents"`
+	TotalCapacity   int `json:"totalCapacity"`
+	SeatsAvailable  int `json:"seatsAvailable"`
+}
+
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type Mutation struct {
+}
+
+type PlatformStats struct {
+	Users   *UserStats   `json:"users"`
+	Events  *EventStats  `json:"events"`
+	Tickets *TicketStats `json:"tickets"`
 }
 
 type Query struct {
@@ -55,12 +73,20 @@ type RegisterInput struct {
 }
 
 type Ticket struct {
-	ID         string `json:"id"`
-	UserID     string `json:"userId"`
-	EventID    string `json:"eventId"`
-	Status     string `json:"status"`
-	TicketCode string `json:"ticketCode"`
-	CreatedAt  string `json:"createdAt"`
+	ID          string  `json:"id"`
+	UserID      string  `json:"userId"`
+	EventID     string  `json:"eventId"`
+	Status      string  `json:"status"`
+	TicketCode  string  `json:"ticketCode"`
+	CreatedAt   string  `json:"createdAt"`
+	CheckedInAt *string `json:"checkedInAt,omitempty"`
+}
+
+type TicketStats struct {
+	TotalTickets     int `json:"totalTickets"`
+	ConfirmedTickets int `json:"confirmedTickets"`
+	CheckedInTickets int `json:"checkedInTickets"`
+	WaitlistEntries  int `json:"waitlistEntries"`
 }
 
 type UpdateProfileInput struct {
@@ -72,5 +98,17 @@ type User struct {
 	Email     string `json:"email"`
 	Name      string `json:"name"`
 	Role      string `json:"role"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type UserStats struct {
+	TotalUsers int `json:"totalUsers"`
+	AdminUsers int `json:"adminUsers"`
+}
+
+type WaitlistEntry struct {
+	ID        string `json:"id"`
+	UserID    string `json:"userId"`
+	EventID   string `json:"eventId"`
 	CreatedAt string `json:"createdAt"`
 }

@@ -37,7 +37,7 @@ func (h *EventHandler) CreateEvent(ctx context.Context, req *eventv1.CreateEvent
 		return nil, status.Error(codes.InvalidArgument, "invalid end_time")
 	}
 
-	event, err := h.svc.CreateEvent(ctx, req.GetTitle(), req.GetDescription(), req.GetLocation(), start, end, req.GetCapacity(), createdBy)
+	event, err := h.svc.CreateEvent(ctx, req.GetTitle(), req.GetDescription(), req.GetLocation(), req.GetCategory(), req.GetPriceCents(), start, end, req.GetCapacity(), createdBy)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -51,6 +51,7 @@ func (h *EventHandler) ListEvents(ctx context.Context, req *eventv1.ListEventsRe
 		Search:   req.GetSearch(),
 		Location: req.GetLocation(),
 		Status:   req.GetStatus(),
+		Category: req.GetCategory(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -104,6 +105,18 @@ func (h *EventHandler) ReserveSeat(ctx context.Context, req *eventv1.ReserveSeat
 	return &eventv1.ReserveSeatResponse{Success: true, AvailableSeats: event.AvailableSeats}, nil
 }
 
+func (h *EventHandler) GetEventStats(ctx context.Context, _ *eventv1.GetEventStatsRequest) (*eventv1.GetEventStatsResponse, error) {
+	st, err := h.svc.GetStats(ctx)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &eventv1.GetEventStatsResponse{
+		TotalEvents: st.TotalEvents, PublishedEvents: st.PublishedEvents,
+		CancelledEvents: st.CancelledEvents, TotalCapacity: st.TotalCapacity,
+		SeatsAvailable: st.SeatsAvailable,
+	}, nil
+}
+
 func (h *EventHandler) ReleaseSeat(ctx context.Context, req *eventv1.ReleaseSeatRequest) (*eventv1.ReleaseSeatResponse, error) {
 	id, err := uuid.Parse(req.GetEventId())
 	if err != nil {
@@ -129,6 +142,8 @@ func toProtoEvent(e *model.Event) *eventv1.Event {
 		CreatedBy:      e.CreatedBy.String(),
 		CreatedAt:      e.CreatedAt.UTC().Format(time.RFC3339),
 		Status:         e.Status,
+		Category:       e.Category,
+		PriceCents:     e.PriceCents,
 	}
 }
 
@@ -141,6 +156,8 @@ func mapError(err error) error {
 	case errors.Is(err, repository.ErrNoSeatsAvailable):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, repository.ErrEventCancelled):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, repository.ErrEventStarted):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Error(codes.Internal, "internal error")

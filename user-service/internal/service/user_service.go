@@ -18,12 +18,18 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
+type UserStatsOutput struct {
+	TotalUsers int32
+	AdminUsers int32
+}
+
 type UserService interface {
 	CreateUser(ctx context.Context, email, name, password, role string) (*model.User, error)
 	GetUser(ctx context.Context, id uuid.UUID) (*model.User, error)
 	ListUsers(ctx context.Context) ([]model.User, error)
 	ValidateCredentials(ctx context.Context, email, password string) (*model.User, error)
 	UpdateProfile(ctx context.Context, id uuid.UUID, name string) (*model.User, error)
+	GetStats(ctx context.Context) (*UserStatsOutput, error)
 }
 
 type userService struct {
@@ -98,4 +104,12 @@ func (s *userService) UpdateProfile(ctx context.Context, id uuid.UUID, name stri
 		return nil, ErrInvalidInput
 	}
 	return s.repo.UpdateName(ctx, id, name)
+}
+
+func (s *userService) GetStats(ctx context.Context) (*UserStatsOutput, error) {
+	st, err := s.repo.Stats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &UserStatsOutput{TotalUsers: int32(st.TotalUsers), AdminUsers: int32(st.AdminUsers)}, nil
 }

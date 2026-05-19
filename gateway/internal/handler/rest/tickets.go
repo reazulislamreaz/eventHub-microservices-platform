@@ -115,12 +115,12 @@ func (h *Handler) CancelTicket(w http.ResponseWriter, r *http.Request) {
 }
 
 func mapProtoTicket(t *ticketv1.Ticket) Ticket {
-	return Ticket{
-		ID:         t.GetId(),
-		UserID:     t.GetUserId(),
-		EventID:    t.GetEventId(),
-		Status:     t.GetStatus(),
-		TicketCode: t.GetTicketCode(),
-		CreatedAt:  t.GetCreatedAt(),
+	ticket := Ticket{
+		ID: t.GetId(), UserID: t.GetUserId(), EventID: t.GetEventId(),
+		Status: t.GetStatus(), TicketCode: t.GetTicketCode(), CreatedAt: t.GetCreatedAt(),
 	}
+	if checked := t.GetCheckedInAt(); checked != "" {
+		ticket.CheckedInAt = &checked
+	}
+	return ticket
 }

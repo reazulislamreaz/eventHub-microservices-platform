@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	StatusConfirmed = "confirmed"
-	StatusCancelled = "cancelled"
+	StatusConfirmed  = "confirmed"
+	StatusCancelled  = "cancelled"
+	StatusCheckedIn  = "checked_in"
 )
 
 type Ticket struct {
@@ -19,8 +20,9 @@ type Ticket struct {
 	UserID     uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
 	EventID    uuid.UUID `gorm:"type:uuid;not null;index" json:"event_id"`
 	Status     string    `gorm:"size:50;not null;default:confirmed" json:"status"`
-	TicketCode string    `gorm:"uniqueIndex;size:32;not null" json:"ticket_code"`
-	CreatedAt  time.Time `json:"created_at"`
+	TicketCode  string     `gorm:"uniqueIndex;size:32;not null" json:"ticket_code"`
+	CheckedInAt *time.Time `json:"checked_in_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 

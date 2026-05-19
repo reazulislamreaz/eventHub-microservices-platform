@@ -23,6 +23,31 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/admin/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin dashboard: users, events, and ticket metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Platform statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.PlatformStats"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticates with email/password and returns a JWT token",
@@ -149,22 +174,59 @@ const docTemplate = `{
         },
         "/api/v1/events": {
             "get": {
-                "description": "Returns all published events with seat availability",
+                "description": "Search and filter published events with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "events"
                 ],
-                "summary": "List events",
+                "summary": "List events (paginated)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search title/description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by location",
+                        "name": "location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event status (admin)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category filter (music, tech, sports, ...)",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/rest.Event"
-                            }
+                            "$ref": "#/definitions/rest.EventPage"
                         }
                     },
                     "500": {
@@ -181,7 +243,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a new event (admin only). Requires Bearer JWT with admin role.",
+                "description": "Creates a new event (admin only)",
                 "consumes": [
                     "application/json"
                 ],
@@ -209,29 +271,74 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/rest.Event"
                         }
+                    }
+                }
+            }
+        },
+        "/api/v1/events/{id}": {
+            "get": {
+                "description": "Returns a single event",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Get event by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Event"
+                        }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrorResponse"
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                }
+            }
+        },
+        "/api/v1/events/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks event as cancelled (admin only); blocks new bookings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Cancel event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/rest.ErrorResponse"
+                            "$ref": "#/definitions/rest.Event"
                         }
                     }
                 }
@@ -320,6 +427,147 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/check-in": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks ticket as checked in at venue entrance (admin)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Check in attendee",
+                "parameters": [
+                    {
+                        "description": "Ticket code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.CheckInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Ticket"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/code/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Public lookup path used with ticket code in URL",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Get ticket by code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Ticket"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/verify": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Look up a ticket by its QR/barcode code (owner or admin)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Verify ticket by code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket code",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Ticket"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cancels a booking and releases the seat back to the event",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Cancel ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.Ticket"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "description": "Returns all registered users",
@@ -344,6 +592,45 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/rest.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/me": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the authenticated user's display name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update profile",
+                "parameters": [
+                    {
+                        "description": "Profile",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.User"
                         }
                     }
                 }
@@ -445,6 +732,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/waitlist": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Join waitlist when event is sold out",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Join event waitlist",
+                "parameters": [
+                    {
+                        "description": "Event to waitlist",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rest.JoinWaitlistRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/rest.WaitlistEntry"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns gateway health status",
@@ -539,6 +865,15 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.CheckInRequest": {
+            "type": "object",
+            "properties": {
+                "ticketCode": {
+                    "type": "string",
+                    "example": "EH-a1b2c3d4e5f67890"
+                }
+            }
+        },
         "rest.CreateEventRequest": {
             "description": "Event creation body",
             "type": "object",
@@ -554,6 +889,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 100
                 },
+                "category": {
+                    "type": "string",
+                    "example": "tech"
+                },
                 "description": {
                     "type": "string",
                     "example": "Annual Go community meetup"
@@ -565,6 +904,10 @@ const docTemplate = `{
                 "location": {
                     "type": "string",
                     "example": "Dhaka, Bangladesh"
+                },
+                "priceCents": {
+                    "type": "integer",
+                    "example": 0
                 },
                 "startTime": {
                     "type": "string",
@@ -606,6 +949,18 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 100
                 },
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "music",
+                        "tech",
+                        "sports",
+                        "conference",
+                        "workshop",
+                        "other"
+                    ],
+                    "example": "tech"
+                },
                 "createdAt": {
                     "type": "string",
                     "example": "2026-05-19T12:00:00Z"
@@ -630,13 +985,73 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Dhaka, Bangladesh"
                 },
+                "priceCents": {
+                    "type": "integer",
+                    "example": 2500
+                },
                 "startTime": {
                     "type": "string",
                     "example": "2026-06-15T09:00:00Z"
                 },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "published",
+                        "cancelled"
+                    ],
+                    "example": "published"
+                },
                 "title": {
                     "type": "string",
                     "example": "Go Conference 2026"
+                }
+            }
+        },
+        "rest.EventPage": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.Event"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "pageSize": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "rest.EventStats": {
+            "type": "object",
+            "properties": {
+                "cancelledEvents": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "publishedEvents": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "seatsAvailable": {
+                    "type": "integer",
+                    "example": 1200
+                },
+                "totalCapacity": {
+                    "type": "integer",
+                    "example": 5000
+                },
+                "totalEvents": {
+                    "type": "integer",
+                    "example": 25
                 }
             }
         },
@@ -676,6 +1091,15 @@ const docTemplate = `{
                 }
             }
         },
+        "rest.JoinWaitlistRequest": {
+            "type": "object",
+            "properties": {
+                "eventId": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                }
+            }
+        },
         "rest.LoginRequest": {
             "description": "Login credentials",
             "type": "object",
@@ -691,6 +1115,20 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "example": "AdminPass123!"
+                }
+            }
+        },
+        "rest.PlatformStats": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "$ref": "#/definitions/rest.EventStats"
+                },
+                "tickets": {
+                    "$ref": "#/definitions/rest.TicketStats"
+                },
+                "users": {
+                    "$ref": "#/definitions/rest.UserStats"
                 }
             }
         },
@@ -722,6 +1160,10 @@ const docTemplate = `{
             "description": "Confirmed event ticket",
             "type": "object",
             "properties": {
+                "checkedInAt": {
+                    "type": "string",
+                    "example": "2026-06-15T09:05:00Z"
+                },
                 "createdAt": {
                     "type": "string",
                     "example": "2026-05-19T12:30:00Z"
@@ -736,6 +1178,11 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string",
+                    "enum": [
+                        "confirmed",
+                        "cancelled",
+                        "checked_in"
+                    ],
                     "example": "confirmed"
                 },
                 "ticketCode": {
@@ -745,6 +1192,36 @@ const docTemplate = `{
                 "userId": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "rest.TicketStats": {
+            "type": "object",
+            "properties": {
+                "checkedInTickets": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "confirmedTickets": {
+                    "type": "integer",
+                    "example": 650
+                },
+                "totalTickets": {
+                    "type": "integer",
+                    "example": 800
+                },
+                "waitlistEntries": {
+                    "type": "integer",
+                    "example": 45
+                }
+            }
+        },
+        "rest.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Alice Updated"
                 }
             }
         },
@@ -775,6 +1252,36 @@ const docTemplate = `{
                         "admin"
                     ],
                     "example": "user"
+                }
+            }
+        },
+        "rest.UserStats": {
+            "type": "object",
+            "properties": {
+                "adminUsers": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "totalUsers": {
+                    "type": "integer",
+                    "example": 120
+                }
+            }
+        },
+        "rest.WaitlistEntry": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
                 }
             }
         }

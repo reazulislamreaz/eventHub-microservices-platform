@@ -67,6 +67,14 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfi
 	return &userv1.UpdateProfileResponse{User: toProtoUser(user)}, nil
 }
 
+func (h *UserHandler) GetUserStats(ctx context.Context, _ *userv1.GetUserStatsRequest) (*userv1.GetUserStatsResponse, error) {
+	st, err := h.svc.GetStats(ctx)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &userv1.GetUserStatsResponse{TotalUsers: st.TotalUsers, AdminUsers: st.AdminUsers}, nil
+}
+
 func (h *UserHandler) ValidateCredentials(ctx context.Context, req *userv1.ValidateCredentialsRequest) (*userv1.ValidateCredentialsResponse, error) {
 	user, err := h.svc.ValidateCredentials(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {

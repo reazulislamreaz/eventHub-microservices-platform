@@ -78,14 +78,19 @@ func (r *mutationResolver) CreateEvent(ctx context.Context, input model.CreateEv
 	if !ok {
 		return nil, gqlerror.Errorf("authentication required")
 	}
+	var category string
+	if input.Category != nil {
+		category = *input.Category
+	}
+	var priceCents int64
+	if input.PriceCents != nil {
+		priceCents = int64(*input.PriceCents)
+	}
 	resp, err := r.Clients.Event.CreateEvent(ctx, &eventv1.CreateEventRequest{
-		Title:       input.Title,
-		Description: input.Description,
-		Location:    input.Location,
-		StartTime:   input.StartTime,
-		EndTime:     input.EndTime,
-		Capacity:    int32(input.Capacity),
-		CreatedBy:   claims.UserID,
+		Title: input.Title, Description: input.Description, Location: input.Location,
+		Category: category, PriceCents: priceCents,
+		StartTime: input.StartTime, EndTime: input.EndTime, Capacity: int32(input.Capacity),
+		CreatedBy: claims.UserID,
 	})
 	if err != nil {
 		return nil, grpcError(err)
@@ -134,6 +139,30 @@ func (r *mutationResolver) CancelTicket(ctx context.Context, ticketID string) (*
 	return mapTicket(resp.GetTicket()), nil
 }
 
+// JoinWaitlist is the resolver for the joinWaitlist field.
+func (r *mutationResolver) JoinWaitlist(ctx context.Context, eventID string) (*model.WaitlistEntry, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, gqlerror.Errorf("authentication required")
+	}
+	resp, err := r.Clients.Ticket.JoinWaitlist(ctx, &ticketv1.JoinWaitlistRequest{
+		UserId: claims.UserID, EventId: eventID,
+	})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapWaitlist(resp.GetEntry()), nil
+}
+
+// CheckInTicket is the resolver for the checkInTicket field.
+func (r *mutationResolver) CheckInTicket(ctx context.Context, ticketCode string) (*model.Ticket, error) {
+	resp, err := r.Clients.Ticket.CheckInTicket(ctx, &ticketv1.CheckInTicketRequest{TicketCode: ticketCode})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return mapTicket(resp.GetTicket()), nil
+}
+
 // GetUsers is the resolver for the getUsers field.
 func (r *queryResolver) GetUsers(ctx context.Context) ([]*model.User, error) {
 	resp, err := r.Clients.User.ListUsers(ctx, &userv1.ListUsersRequest{})
@@ -166,13 +195,11 @@ func (r *queryResolver) GetEvent(ctx context.Context, id string) (*model.Event, 
 }
 
 // GetEvents is the resolver for the getEvents field.
-func (r *queryResolver) GetEvents(ctx context.Context, page *int, pageSize *int, search *string, location *string, status *string) (*model.EventPage, error) {
+func (r *queryResolver) GetEvents(ctx context.Context, page *int, pageSize *int, search *string, location *string, status *string, category *string) (*model.EventPage, error) {
 	req := &eventv1.ListEventsRequest{
-		Page:     int32(derefInt(page, 1)),
-		PageSize: int32(derefInt(pageSize, 20)),
-		Search:   derefString(search),
-		Location: derefString(location),
-		Status:   derefString(status),
+		Page: int32(derefInt(page, 1)), PageSize: int32(derefInt(pageSize, 20)),
+		Search: derefString(search), Location: derefString(location),
+		Status: derefString(status), Category: derefString(category),
 	}
 	resp, err := r.Clients.Event.ListEvents(ctx, req)
 	if err != nil {
@@ -210,6 +237,54 @@ func (r *queryResolver) GetTicketsByUser(ctx context.Context, userID string) ([]
 	return tickets, nil
 }
 
+// VerifyTicket is the resolver for the verifyTicket field.
+func (r *queryResolver) VerifyTicket(ctx context.Context, ticketCode string) (*model.Ticket, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, gqlerror.Errorf("authentication required")
+	}
+	resp, err := r.Clients.Ticket.GetTicketByCode(ctx, &ticketv1.GetTicketByCodeRequest{TicketCode: ticketCode})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	t := resp.GetTicket()
+	if claims.Role != "admin" && t.GetUserId() != claims.UserID {
+		return nil, gqlerror.Errorf("cannot verify another user's ticket")
+	}
+	return mapTicket(t), nil
+}
+
+// PlatformStats is the resolver for the platformStats field.
+func (r *queryResolver) PlatformStats(ctx context.Context) (*model.PlatformStats, error) {
+	users, err := r.Clients.User.GetUserStats(ctx, &userv1.GetUserStatsRequest{})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	events, err := r.Clients.Event.GetEventStats(ctx, &eventv1.GetEventStatsRequest{})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	tickets, err := r.Clients.Ticket.GetTicketStats(ctx, &ticketv1.GetTicketStatsRequest{})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	return &model.PlatformStats{
+		Users: &model.UserStats{
+			TotalUsers: int(users.GetTotalUsers()),
+			AdminUsers: int(users.GetAdminUsers()),
+		},
+		Events: &model.EventStats{
+			TotalEvents: int(events.GetTotalEvents()), PublishedEvents: int(events.GetPublishedEvents()),
+			CancelledEvents: int(events.GetCancelledEvents()), TotalCapacity: int(events.GetTotalCapacity()),
+			SeatsAvailable: int(events.GetSeatsAvailable()),
+		},
+		Tickets: &model.TicketStats{
+			TotalTickets: int(tickets.GetTotalTickets()), ConfirmedTickets: int(tickets.GetConfirmedTickets()),
+			CheckedInTickets: int(tickets.GetCheckedInTickets()), WaitlistEntries: int(tickets.GetWaitlistEntries()),
+		},
+	}, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -219,20 +294,24 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
 func derefInt(p *int, def int) int {
 	if p == nil {
 		return def
 	}
 	return *p
 }
-
 func derefString(p *string) string {
 	if p == nil {
 		return ""
 	}
 	return *p
 }
-
 func grpcError(err error) error {
 	if st, ok := status.FromError(err); ok {
 		switch st.Code() {

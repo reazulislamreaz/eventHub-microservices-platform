@@ -19,6 +19,7 @@ type EventListInput struct {
 	Search   string
 	Location string
 	Status   string
+	Category string
 }
 
 type EventListOutput struct {
@@ -28,13 +29,22 @@ type EventListOutput struct {
 	PageSize int32
 }
 
+type EventStatsOutput struct {
+	TotalEvents     int32
+	PublishedEvents int32
+	CancelledEvents int32
+	TotalCapacity   int32
+	SeatsAvailable  int32
+}
+
 type EventService interface {
-	CreateEvent(ctx context.Context, title, description, location string, startTime, endTime time.Time, capacity int32, createdBy uuid.UUID) (*model.Event, error)
+	CreateEvent(ctx context.Context, title, description, location, category string, priceCents int64, startTime, endTime time.Time, capacity int32, createdBy uuid.UUID) (*model.Event, error)
 	ListEvents(ctx context.Context, in EventListInput) (*EventListOutput, error)
 	GetEvent(ctx context.Context, id uuid.UUID) (*model.Event, error)
 	CancelEvent(ctx context.Context, id uuid.UUID) (*model.Event, error)
 	ReserveSeat(ctx context.Context, id uuid.UUID) (*model.Event, error)
 	ReleaseSeat(ctx context.Context, id uuid.UUID) (*model.Event, error)
+	GetStats(ctx context.Context) (*EventStatsOutput, error)
 }
 
 type eventService struct {
@@ -45,10 +55,17 @@ func NewEventService(repo repository.EventRepository) EventService {
 	return &eventService{repo: repo}
 }
 
-func (s *eventService) CreateEvent(ctx context.Context, title, description, location string, startTime, endTime time.Time, capacity int32, createdBy uuid.UUID) (*model.Event, error) {
+func (s *eventService) CreateEvent(ctx context.Context, title, description, location, category string, priceCents int64, startTime, endTime time.Time, capacity int32, createdBy uuid.UUID) (*model.Event, error) {
 	title = strings.TrimSpace(title)
 	location = strings.TrimSpace(location)
+	category = strings.TrimSpace(category)
 	if title == "" || location == "" || capacity <= 0 || !endTime.After(startTime) {
+		return nil, ErrInvalidInput
+	}
+	if category == "" {
+		category = model.CategoryOther
+	}
+	if priceCents < 0 {
 		return nil, ErrInvalidInput
 	}
 
@@ -56,6 +73,8 @@ func (s *eventService) CreateEvent(ctx context.Context, title, description, loca
 		Title:          title,
 		Description:    description,
 		Location:       location,
+		Category:       category,
+		PriceCents:     priceCents,
 		StartTime:      startTime,
 		EndTime:        endTime,
 		Capacity:       capacity,
@@ -71,11 +90,8 @@ func (s *eventService) CreateEvent(ctx context.Context, title, description, loca
 
 func (s *eventService) ListEvents(ctx context.Context, in EventListInput) (*EventListOutput, error) {
 	result, err := s.repo.List(ctx, repository.EventFilter{
-		Page:     int(in.Page),
-		PageSize: int(in.PageSize),
-		Search:   in.Search,
-		Location: in.Location,
-		Status:   in.Status,
+		Page: int(in.Page), PageSize: int(in.PageSize),
+		Search: in.Search, Location: in.Location, Status: in.Status, Category: in.Category,
 	})
 	if err != nil {
 		return nil, err
@@ -89,10 +105,7 @@ func (s *eventService) ListEvents(ctx context.Context, in EventListInput) (*Even
 		pageSize = 20
 	}
 	return &EventListOutput{
-		Events:   result.Events,
-		Total:    int32(result.Total),
-		Page:     page,
-		PageSize: pageSize,
+		Events: result.Events, Total: int32(result.Total), Page: page, PageSize: pageSize,
 	}, nil
 }
 
@@ -110,4 +123,16 @@ func (s *eventService) ReserveSeat(ctx context.Context, id uuid.UUID) (*model.Ev
 
 func (s *eventService) ReleaseSeat(ctx context.Context, id uuid.UUID) (*model.Event, error) {
 	return s.repo.ReleaseSeat(ctx, id)
+}
+
+func (s *eventService) GetStats(ctx context.Context) (*EventStatsOutput, error) {
+	st, err := s.repo.Stats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &EventStatsOutput{
+		TotalEvents: int32(st.TotalEvents), PublishedEvents: int32(st.PublishedEvents),
+		CancelledEvents: int32(st.CancelledEvents), TotalCapacity: int32(st.TotalCapacity),
+		SeatsAvailable: int32(st.SeatsAvailable),
+	}, nil
 }

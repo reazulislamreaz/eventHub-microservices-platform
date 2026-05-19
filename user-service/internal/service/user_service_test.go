@@ -46,6 +46,25 @@ func (m *mockUserRepo) List(ctx context.Context) ([]model.User, error) {
 	return out, nil
 }
 
+func (m *mockUserRepo) UpdateName(ctx context.Context, id uuid.UUID, name string) (*model.User, error) {
+	u, err := m.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	u.Name = name
+	return u, nil
+}
+
+func (m *mockUserRepo) Stats(ctx context.Context) (*repository.UserStats, error) {
+	var admins int64
+	for _, u := range m.users {
+		if u.Role == model.RoleAdmin {
+			admins++
+		}
+	}
+	return &repository.UserStats{TotalUsers: int64(len(m.users)), AdminUsers: admins}, nil
+}
+
 func TestCreateUser_Validation(t *testing.T) {
 	svc := NewUserService(&mockUserRepo{users: map[string]*model.User{}})
 

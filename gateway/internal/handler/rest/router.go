@@ -34,8 +34,15 @@ func RegisterRoutes(r *mux.Router, h *Handler) {
 	r.HandleFunc("/api/v1/events/{id}", h.GetEvent).Methods("GET")
 	r.HandleFunc("/api/v1/events/{id}/cancel", h.RequireAdmin(h.CancelEvent)).Methods("POST")
 
+	// Admin dashboard
+	r.HandleFunc("/api/v1/admin/stats", h.RequireAdmin(h.GetPlatformStats)).Methods("GET")
+
 	// Tickets (protected)
 	r.HandleFunc("/api/v1/tickets", h.RequireAuth(h.BookTicket)).Methods("POST")
+	r.HandleFunc("/api/v1/tickets/verify", h.RequireAuth(h.VerifyTicket)).Methods("GET")
+	r.HandleFunc("/api/v1/tickets/check-in", h.RequireAdmin(h.CheckInTicket)).Methods("POST")
+	r.HandleFunc("/api/v1/tickets/code/{code}", h.RequireAuth(h.GetTicketByCode)).Methods("GET")
 	r.HandleFunc("/api/v1/tickets/{id}/cancel", h.RequireAuth(h.CancelTicket)).Methods("POST")
 	r.HandleFunc("/api/v1/users/{id}/tickets", h.RequireAuth(h.GetUserTickets)).Methods("GET")
+	r.HandleFunc("/api/v1/waitlist", h.RequireAuth(h.JoinWaitlist)).Methods("POST")
 }

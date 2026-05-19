@@ -36,12 +36,21 @@ definitions:
     required:
     - eventId
     type: object
+  rest.CheckInRequest:
+    properties:
+      ticketCode:
+        example: EH-a1b2c3d4e5f67890
+        type: string
+    type: object
   rest.CreateEventRequest:
     description: Event creation body
     properties:
       capacity:
         example: 100
         type: integer
+      category:
+        example: tech
+        type: string
       description:
         example: Annual Go community meetup
         type: string
@@ -51,6 +60,9 @@ definitions:
       location:
         example: Dhaka, Bangladesh
         type: string
+      priceCents:
+        example: 0
+        type: integer
       startTime:
         example: "2026-06-15T09:00:00Z"
         type: string
@@ -86,6 +98,16 @@ definitions:
       capacity:
         example: 100
         type: integer
+      category:
+        enum:
+        - music
+        - tech
+        - sports
+        - conference
+        - workshop
+        - other
+        example: tech
+        type: string
       createdAt:
         example: "2026-05-19T12:00:00Z"
         type: string
@@ -104,12 +126,55 @@ definitions:
       location:
         example: Dhaka, Bangladesh
         type: string
+      priceCents:
+        example: 2500
+        type: integer
       startTime:
         example: "2026-06-15T09:00:00Z"
+        type: string
+      status:
+        enum:
+        - published
+        - cancelled
+        example: published
         type: string
       title:
         example: Go Conference 2026
         type: string
+    type: object
+  rest.EventPage:
+    properties:
+      events:
+        items:
+          $ref: '#/definitions/rest.Event'
+        type: array
+      page:
+        example: 1
+        type: integer
+      pageSize:
+        example: 20
+        type: integer
+      total:
+        example: 42
+        type: integer
+    type: object
+  rest.EventStats:
+    properties:
+      cancelledEvents:
+        example: 5
+        type: integer
+      publishedEvents:
+        example: 20
+        type: integer
+      seatsAvailable:
+        example: 1200
+        type: integer
+      totalCapacity:
+        example: 5000
+        type: integer
+      totalEvents:
+        example: 25
+        type: integer
     type: object
   rest.GraphQLDocs:
     description: GraphQL API references
@@ -137,6 +202,12 @@ definitions:
         example: "2026-05-19T12:00:00Z"
         type: string
     type: object
+  rest.JoinWaitlistRequest:
+    properties:
+      eventId:
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+    type: object
   rest.LoginRequest:
     description: Login credentials
     properties:
@@ -149,6 +220,15 @@ definitions:
     required:
     - email
     - password
+    type: object
+  rest.PlatformStats:
+    properties:
+      events:
+        $ref: '#/definitions/rest.EventStats'
+      tickets:
+        $ref: '#/definitions/rest.TicketStats'
+      users:
+        $ref: '#/definitions/rest.UserStats'
     type: object
   rest.RegisterRequest:
     description: User registration body
@@ -171,6 +251,9 @@ definitions:
   rest.Ticket:
     description: Confirmed event ticket
     properties:
+      checkedInAt:
+        example: "2026-06-15T09:05:00Z"
+        type: string
       createdAt:
         example: "2026-05-19T12:30:00Z"
         type: string
@@ -181,6 +264,10 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440002
         type: string
       status:
+        enum:
+        - confirmed
+        - cancelled
+        - checked_in
         example: confirmed
         type: string
       ticketCode:
@@ -188,6 +275,27 @@ definitions:
         type: string
       userId:
         example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  rest.TicketStats:
+    properties:
+      checkedInTickets:
+        example: 400
+        type: integer
+      confirmedTickets:
+        example: 650
+        type: integer
+      totalTickets:
+        example: 800
+        type: integer
+      waitlistEntries:
+        example: 45
+        type: integer
+    type: object
+  rest.UpdateProfileRequest:
+    properties:
+      name:
+        example: Alice Updated
         type: string
     type: object
   rest.User:
@@ -212,6 +320,26 @@ definitions:
         example: user
         type: string
     type: object
+  rest.UserStats:
+    properties:
+      adminUsers:
+        example: 2
+        type: integer
+      totalUsers:
+        example: 120
+        type: integer
+    type: object
+  rest.WaitlistEntry:
+    properties:
+      createdAt:
+        type: string
+      eventId:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+    type: object
 info:
   contact:
     email: support@eventhub.io
@@ -233,6 +361,21 @@ info:
   title: EventHub Gateway API
   version: "1.0"
 paths:
+  /api/v1/admin/stats:
+    get:
+      description: 'Admin dashboard: users, events, and ticket metrics'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.PlatformStats'
+      security:
+      - BearerAuth: []
+      summary: Platform statistics
+      tags:
+      - admin
   /api/v1/auth/login:
     post:
       consumes:
@@ -316,28 +459,52 @@ paths:
       - documentation
   /api/v1/events:
     get:
-      description: Returns all published events with seat availability
+      description: Search and filter published events with pagination
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search title/description
+        in: query
+        name: search
+        type: string
+      - description: Filter by location
+        in: query
+        name: location
+        type: string
+      - description: Event status (admin)
+        in: query
+        name: status
+        type: string
+      - description: Category filter (music, tech, sports, ...)
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/rest.Event'
-            type: array
+            $ref: '#/definitions/rest.EventPage'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/rest.ErrorResponse'
-      summary: List events
+      summary: List events (paginated)
       tags:
       - events
     post:
       consumes:
       - application/json
-      description: Creates a new event (admin only). Requires Bearer JWT with admin
-        role.
+      description: Creates a new event (admin only)
       parameters:
       - description: Event details
         in: body
@@ -352,25 +519,53 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/rest.Event'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/rest.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/rest.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/rest.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/rest.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create event
+      tags:
+      - events
+  /api/v1/events/{id}:
+    get:
+      description: Returns a single event
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Event'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rest.ErrorResponse'
+      summary: Get event by ID
+      tags:
+      - events
+  /api/v1/events/{id}/cancel:
+    post:
+      description: Marks event as cancelled (admin only); blocks new bookings
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Event'
+      security:
+      - BearerAuth: []
+      summary: Cancel event
       tags:
       - events
   /api/v1/graphql/schema:
@@ -426,6 +621,93 @@ paths:
       security:
       - BearerAuth: []
       summary: Book a ticket
+      tags:
+      - tickets
+  /api/v1/tickets/{id}/cancel:
+    post:
+      description: Cancels a booking and releases the seat back to the event
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Ticket'
+      security:
+      - BearerAuth: []
+      summary: Cancel ticket
+      tags:
+      - tickets
+  /api/v1/tickets/check-in:
+    post:
+      consumes:
+      - application/json
+      description: Marks ticket as checked in at venue entrance (admin)
+      parameters:
+      - description: Ticket code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.CheckInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Ticket'
+      security:
+      - BearerAuth: []
+      summary: Check in attendee
+      tags:
+      - tickets
+  /api/v1/tickets/code/{code}:
+    get:
+      description: Public lookup path used with ticket code in URL
+      parameters:
+      - description: Ticket code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Ticket'
+      security:
+      - BearerAuth: []
+      summary: Get ticket by code
+      tags:
+      - tickets
+  /api/v1/tickets/verify:
+    get:
+      description: Look up a ticket by its QR/barcode code (owner or admin)
+      parameters:
+      - description: Ticket code
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.Ticket'
+      security:
+      - BearerAuth: []
+      summary: Verify ticket by code
       tags:
       - tickets
   /api/v1/users:
@@ -508,6 +790,54 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user tickets
+      tags:
+      - tickets
+  /api/v1/users/me:
+    patch:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's display name
+      parameters:
+      - description: Profile
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.User'
+      security:
+      - BearerAuth: []
+      summary: Update profile
+      tags:
+      - users
+  /api/v1/waitlist:
+    post:
+      consumes:
+      - application/json
+      description: Join waitlist when event is sold out
+      parameters:
+      - description: Event to waitlist
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rest.JoinWaitlistRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/rest.WaitlistEntry'
+      security:
+      - BearerAuth: []
+      summary: Join event waitlist
       tags:
       - tickets
   /health:

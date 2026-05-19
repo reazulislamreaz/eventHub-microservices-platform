@@ -25,6 +25,8 @@ type Event struct {
 	Title          string `json:"title" example:"Go Conference 2026"`
 	Description    string `json:"description" example:"Annual Go meetup"`
 	Location       string `json:"location" example:"Dhaka, Bangladesh"`
+	Category       string `json:"category" example:"tech" enums:"music,tech,sports,conference,workshop,other"`
+	PriceCents     int64  `json:"priceCents" example:"2500"`
 	StartTime      string `json:"startTime" example:"2026-06-15T09:00:00Z"`
 	EndTime        string `json:"endTime" example:"2026-06-15T18:00:00Z"`
 	Capacity       int    `json:"capacity" example:"100"`
@@ -50,12 +52,13 @@ type UpdateProfileRequest struct {
 // Ticket represents a booking for an event.
 // @Description Confirmed event ticket
 type Ticket struct {
-	ID         string `json:"id" example:"550e8400-e29b-41d4-a716-446655440002"`
-	UserID     string `json:"userId" example:"550e8400-e29b-41d4-a716-446655440000"`
-	EventID    string `json:"eventId" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Status     string `json:"status" example:"confirmed"`
-	TicketCode string `json:"ticketCode" example:"EH-a1b2c3d4e5f67890"`
-	CreatedAt  string `json:"createdAt" example:"2026-05-19T12:30:00Z"`
+	ID          string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440002"`
+	UserID      string  `json:"userId" example:"550e8400-e29b-41d4-a716-446655440000"`
+	EventID     string  `json:"eventId" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Status      string  `json:"status" example:"confirmed" enums:"confirmed,cancelled,checked_in"`
+	TicketCode  string  `json:"ticketCode" example:"EH-a1b2c3d4e5f67890"`
+	CheckedInAt *string `json:"checkedInAt,omitempty" example:"2026-06-15T09:05:00Z"`
+	CreatedAt   string  `json:"createdAt" example:"2026-05-19T12:30:00Z"`
 }
 
 // RegisterRequest registers a new user.
@@ -86,6 +89,8 @@ type CreateEventRequest struct {
 	Title       string `json:"title" example:"Go Conference 2026" binding:"required"`
 	Description string `json:"description" example:"Annual Go community meetup"`
 	Location    string `json:"location" example:"Dhaka, Bangladesh" binding:"required"`
+	Category    string `json:"category" example:"tech"`
+	PriceCents  int64  `json:"priceCents" example:"0"`
 	StartTime   string `json:"startTime" example:"2026-06-15T09:00:00Z" binding:"required"`
 	EndTime     string `json:"endTime" example:"2026-06-15T18:00:00Z" binding:"required"`
 	Capacity    int32  `json:"capacity" example:"100" binding:"required"`
