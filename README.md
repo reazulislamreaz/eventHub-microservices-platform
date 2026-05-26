@@ -6,7 +6,11 @@ Production-oriented event management backend built with Go microservices, gRPC, 
 
 ## Overview
 
-EventHub lets users browse events, register accounts, book tickets, and receive unique ticket codes. Admins create events with capacity management. Each bounded context runs as an independent service with its own database.
+**EventHub** is a production-style **event management platform** built as **Go microservices** — designed to show how real systems split ownership, scale independently, and stay operable in production.
+
+Users can **register**, **browse events**, **book tickets**, and receive **unique ticket codes**. Admins manage events with **capacity**, **status lifecycle**, and inventory control. Each bounded context (**User**, **Event**, **Ticket**) runs as its own service with a **dedicated PostgreSQL database**, connected through **gRPC** and exposed via a **GraphQL gateway** (JWT auth, Swagger, metrics, rate limiting).
+
+**Why this project matters:** demonstrates **microservices architecture**, **system design**, and **performance-minded** backend engineering — database-per-service, inter-service RPC, paginated search, ticket cancel with seat release, Prometheus metrics, and Docker Compose orchestration.
 
 ## Architecture
 
